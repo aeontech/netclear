@@ -2,13 +2,17 @@ import os
 import wx
 import sys
 
+
 class Prompt:
     _title = None
     _comms = None
-    _devs  = None
+    _devs = None
+
     _bauds = [
         '9600',
+        # '19200',
         '38400',
+        # '57600',
         '115200'
     ]
 
@@ -25,7 +29,7 @@ class Prompt:
         self._comms = communications
 
     def setDevices(self, devices):
-        self._devs  = devices
+        self._devs = devices
 
     def get(self, setting):
         return self.settings[setting]
@@ -37,9 +41,9 @@ class Prompt:
         if self._devs is None:
             raise RuntimeError("No devices provided!")
 
-        app   = wx.App()
-        size  = wx.Size(350, 330)
-        style = wx.DEFAULT_FRAME_STYLE & (~wx.MAXIMIZE_BOX) & (~wx.RESIZE_BORDER)
+        app = wx.App()
+        size = wx.Size(350, 330)
+        style = wx.DEFAULT_FRAME_STYLE & ~(wx.MAXIMIZE_BOX | wx.RESIZE_BORDER)
         frame = _PromptFrame(None, title=self._title, size=size, style=style)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -52,7 +56,7 @@ class Prompt:
         comms.SetSelection(0)
         bauds.SetSelection(0)
         self.settings['comms'] = self._comms[0]
-        self.settings['baud']  = self._bauds[0]
+        self.settings['baud'] = self._bauds[0]
 
         tree = _TreeWidget(frame)
         tree.setData(self._devs)
@@ -77,7 +81,7 @@ class Prompt:
 
         # Add sizers to frame
         frame.SetSizer(sizer)
-        frame.SetMinSize(wx.Size(300,250))
+        frame.SetMinSize(wx.Size(300, 250))
         frame.Show()
 
         # Add bindings
@@ -85,7 +89,8 @@ class Prompt:
         frame.Bind(wx.EVT_BUTTON, lambda e: app.ExitMainLoop(), submit)
         frame.Bind(wx.EVT_CHOICE, self.onComms,  comms)
         frame.Bind(wx.EVT_CHOICE, self.onBauds,  bauds)
-        frame.Bind(wx.EVT_TREE_SEL_CHANGED, lambda e: self.onTree(e, tree), tree)
+        frame.Bind(wx.EVT_TREE_SEL_CHANGED, lambda e: self.onTree(e, tree),
+                   tree)
 
         app.MainLoop()
 
@@ -93,11 +98,12 @@ class Prompt:
         self.settings['comms'] = event.GetString()
 
     def onBauds(self, event):
-        self.settings['baud']  = int(event.GetString())
+        self.settings['baud'] = int(event.GetString())
 
     def onTree(self, event, tree):
         item = tree.GetSelection()
         self.settings['device'] = tree.GetItemData(item)
+
 
 class _PromptFrame(wx.Frame):
     _ver = '0.1-alpha'
@@ -152,12 +158,15 @@ class _PromptFrame(wx.Frame):
                       wx.OK | wx.ICON_INFORMATION)
 
     def onAbout(self, event):
+        ver = self._ver
+
         wx.MessageBox("Net-Clear v%s\n\n"
                       "This program was created to aid in the secure "
                       "factory reset of networked devices, without prior "
-                      "technical understanding of specific hardware." % self._ver,
-                      "About Net-Clear v%s" % self._ver,
+                      "technical understanding of specific hardware." % ver,
+                      "About Net-Clear v%s" % ver,
                       wx.OK | wx.ICON_INFORMATION)
+
 
 class _TreeWidget(wx.TreeCtrl):
     def setData(self, data):
