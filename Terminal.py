@@ -1,6 +1,7 @@
 import os
 import wx
 import math
+from wx.lib.scrolledpanel import ScrolledPanel
 
 
 def profile(fnc):
@@ -51,14 +52,17 @@ class _TextSelection:
         return True
 
 
-class _TextBuffer:
+class _LineBuffer:
     _contents = None
+    _wrap = False
+    _limit = 80
     _lines = None
-    _selection = _TextSelection()
 
     def __init__(self, contents=''):
         self._contents = contents
-        self._lines = contents.split(os.linesep)
+        self._lines = []
+
+        self._process()
 
     def __str__(self):
         return self._contents
@@ -68,11 +72,11 @@ class _TextBuffer:
 
     def __setitem__(self, key, value):
         self._contents[key] = value
-        self._lines = self._contents.split(os.linesep)
+        self._process()
 
     def __delitem__(self, key):
         del self._contents[key]
-        self._lines = self._contents.split(os.linesep)
+        self._process()
 
     def __contains__(self, item):
         return item in self._contents
@@ -83,22 +87,21 @@ class _TextBuffer:
     def __add__(self, value):
         buff = self()
         buff._contents = self._contents + value
-        buff._lines = buff._contents.split(os.linesep)
-        buff._selection = self._selection
+        buff._process()
 
         return buff
 
     def __radd__(self, value):
         buff = self()
         buff._contents = value + self._contents
-        buff._lines = buff._contents.split(os.linesep)
-        buff._selection = self._selection
+        buff._process()
 
         return buff
 
     def __iadd__(self, value):
         self._contents += value
-        self._lines = self._contents.split(os.linesep)
+        self._process()
+
         return self
 
     def __iter__(self):
@@ -115,10 +118,122 @@ class _TextBuffer:
         return self._lines[last]
 
     def GetWrap(self):
-        return False
+        return self._wrap
 
     def SetWrap(self, wrap):
-        raise RuntimeError('Can\'t set wrapping for the text buffer!')
+        self._wrap = wrap
+
+        self._process()
+
+    def GetLimit(self):
+        return self._limit
+
+    def SetLimit(self, limit):
+        self._limit = limit
+
+        self._process()
+
+    def _process(self):
+        if not self.GetWrap():
+            return
+
+        limit = self.GetLimit()
+        self._lines = []
+
+        lineLen = len(self._contents) - len(os.linesep)
+
+        for i in range(math.ceil(lineLen/limit)):
+            start = i * limit
+            end = min((i + 1) * limit, lineLen)
+
+            self._lines.append(self._contents[start:end])
+
+
+class _TextBuffer:
+    _contents = None
+    _wrap = False
+    _lines = None
+    _limit = 80
+    _selection = _TextSelection()
+
+    def __init__(self, contents=''):
+        self._contents = contents
+        self._lines = []
+        self._processLines()
+
+    def __str__(self):
+        return self._contents
+
+    def __getitem__(self, key):
+        return self._contents[key]
+
+    def __setitem__(self, key, value):
+        self._contents[key] = value
+        self._processLines()
+
+    def __delitem__(self, key):
+        del self._contents[key]
+        self._processLines()
+
+    def __contains__(self, item):
+        return item in self._contents
+
+    def __len__(self):
+        return len(self._contents)
+
+    def __add__(self, value):
+        buff = self()
+        buff._contents = self._contents + value
+        buff._selection = self._selection
+        buff._processLines()
+
+        return buff
+
+    def __radd__(self, value):
+        buff = self()
+        buff._contents = value + self._contents
+        buff._selection = self._selection
+        buff._processLines()
+
+        return buff
+
+    def __iadd__(self, value):
+        self._contents += value
+        self._processLines()
+        return self
+
+    def __iter__(self):
+        self.n = 0
+        return self
+
+    def __next__(self):
+        if self.n >= len(self._lines):
+            raise StopIteration
+
+        last = self.n
+        self.n += 1
+
+        return self._lines[last]
+
+    def GetWrap(self):
+        return self._wrap
+
+    def SetWrap(self, wrap):
+        if self._wrap == wrap:
+            return
+
+        self._wrap = wrap
+        self._updateLines()
+
+    def GetLimit(self):
+        return self._limit
+
+    def SetLimit(self, limit):
+        if self._limit == limit:
+            return
+
+        self._limit = limit
+        self._updateLines()
 
     def GetSelection(self):
         return self._selection
@@ -135,124 +250,94 @@ class _TextBuffer:
     def GetNumLines(self):
         return len(self._lines)
 
+    def _processLines(self):
+        del self._lines
+        self._lines = []
+
+        for line in self._contents.split(os.linesep):
+            lineObj = _LineBuffer(line + os.linesep)
+            self._lines.append(lineObj)
+
+        self._updateLines()
+
+    def _updateLines(self):
+        wrap = self.GetWrap()
+        limit = self.GetLimit()
+
+        for line in self._lines:
+            line.SetWrap(wrap)
+            line.SetLimit(limit)
+
     def CursorToIndex(self, col, row):
         index = 0
+        lineNo = 0
         lineSepLen = len(os.linesep)
 
-        for lineNo in range(len(self._lines)):
-            length = len(self._lines[lineNo])
+        for i in range(len(self._lines)):
+            for wrap in self._lines[i]:
+                wrapLen = len(wrap)
+                lineNo += 1
 
-            if not lineNo == row:
-                index += length + lineSepLen
-                continue
+                if not lineNo == row:
+                    index += wrapLen
+                    continue
 
-            index += min(col, length)
-            break
+                index += min(col, wrapLen)
+                break
+
+            if lineNo == row:
+                break
+            else:
+                index += lineSepLen
 
         return index
 
     def IndexToCursor(self, index):
-        parts = self._contents[0:index].split(os.linesep)
+        row = 1
+        col = 0
+        total = 0
+        lineSepLen = len(os.linesep)
 
-        row = len(parts)
-        col = len(parts[-1])
+        for lineNo in range(len(self._lines)):
+            lineLen = len(self._lines[lineNo])
 
-        return (col, row)
+            if total >= index:
+                break
 
+            # If index is beyond this line, add and skip
+            if total + lineLen < index:
+                total += lineLen
 
-class _BufferLayout(_TextBuffer):
-    _wrap = False
-    _limit = 80
+                if (self.GetWrap()):
+                    row += math.ceil((lineLen - lineSepLen) / self.GetLimit())
+                else:
+                    row += 1
 
-    def __init__(self, contents=''):
-        super().__init__(contents)
-        self._processLines()
+                continue
 
-    def __setitem__(self, key, value):
-        super().__setitem__(key, value)
-        self._processLines()
+            for wrap in self._lines[lineNo]:
+                wrapLen = len(wrap)
 
-    def __delitem__(self, key):
-        super().__delitem__(key)
-        self._processLines()
+                if (total + wrapLen) < index:
+                    total += wrapLen
+                    row += 1
+                    continue
 
-    def __contains__(self, item):
-        return item in self._contents
+                col = index - total
+                total += col
+                break
 
-    def __add__(self, value):
-        buff = super().__add__(value)
-        buff._processLines()
-
-        return buff
-
-    def __radd__(self, value):
-        buff = super().__radd__(value)
-        buff._processLines()
-
-        return buff
-
-    def __iadd__(self, value):
-        super().__iadd__(value)
-        self._processLines()
-
-        return self
-
-    def _processLines(self):
-        if not self.GetWrap():
-            return
-
-        limit = self.GetLimit()
-        self._lines = []
-
-        for line in self._contents.split(os.linesep):
-            lineLen = len(line)
-
-            for i in range(math.ceil(lineLen/limit)):
-                start = i * limit
-                end = min((i + 1) * limit, lineLen)
-
-                self._lines.append(line[start:end])
-
-    def GetWrap(self):
-        return self._wrap
-
-    def SetWrap(self, wrap):
-        self._wrap = wrap
-
-    def GetLimit(self):
-        return self._limit
-
-    def SetLimit(self, limit):
-        self._limit = limit
-        self._processLines()
-
-    def IndexToCursor(self, index):
-        if not self.GetWrap():
-            return super().IndexToCursor(index)
-
-        row = 0
-        limit = self.GetLimit()
-        parts = self._contents[0:index].split(os.linesep)
-
-        for line in parts:
-            row += math.ceil(len(line) / limit)
-
-        col = len(parts[-1]) % limit
-
-        if col is 0:
-            row += 1
-
-        return (col, row)
+        return col, row
 
 
-class TerminalCtrl(wx.Control):
+class TerminalCtrl(ScrolledPanel):
     _buffer = None
-    _canvas = None
     _metrics = None
     _lineSpacing = 0
+    _overlay = None
 
     def __init__(self, parent, id=wx.ID_ANY, pos=wx.DefaultPosition,
-                 size=wx.DefaultSize, style=0, validator=wx.DefaultValidator,
+                 size=wx.DefaultSize, style=wx.TAB_TRAVERSAL,
                  name=wx.ControlNameStr):
 
         # Disallow borders
@@ -261,35 +346,34 @@ class TerminalCtrl(wx.Control):
 
         style |= wx.BORDER_NONE
 
-        super().__init__(parent, id, pos, size, style, validator, name)
+        # Set initial buffer - This must be performed before calling __init__
+        # on the parent class
+        self._buffer = _TextBuffer()
+        self._buffer.SetSelectionStart(182)
+        self._buffer.SetSelectionEnd(192)
 
-        super().SetFont(wx.Font(pointSize=13, family=wx.FONTFAMILY_TELETYPE,
-                        style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_LIGHT))
+        super().__init__(parent, id, pos, size, style, name)
 
-        # Set initial buffer
-        self._buffer = _BufferLayout()
-        self._buffer.SetSelectionStart(100)
-        self._buffer.SetSelectionEnd(206)
-
-        # Set canvas
-        size = wx.Size(5, 5)
-        canvas_style = wx.BORDER_NONE | wx.NO_FULL_REPAINT_ON_RESIZE
-        self._canvas = wx.ScrolledCanvas(self, style=canvas_style, size=size)
+        self.SetFont(wx.Font(pointSize=13, family=wx.FONTFAMILY_TELETYPE,
+                     style=wx.FONTSTYLE_NORMAL, weight=wx.FONTWEIGHT_LIGHT))
 
         # Set initial colouring
         back = self.GetBackgroundColour()
         self.SetBackgroundColour(self.GetForegroundColour())
         self.SetForegroundColour(back)
 
+        # This will be our text selection overlay
+        self._overlay = wx.Overlay()
+
         # Set up scrolling
-        self._canvas.EnableScrolling(True, True)
+        self.EnableScrolling(True, True)
 
         self.Bind(wx.EVT_PAINT, self._OnPaint)
         self.Bind(wx.EVT_SIZE,  self._OnSize)
         self.Bind(wx.EVT_ERASE_BACKGROUND, self._OnEraseBackground)
 
-        self._canvas.Bind(wx.EVT_LEFT_DOWN, self._OnMouseDown)
-        self._canvas.Bind(wx.EVT_MOTION, self._OnMouseMove)
+        self.Bind(wx.EVT_LEFT_DOWN, self._OnMouseDown)
+        self.Bind(wx.EVT_MOTION, self._OnMouseMove)
 
         self._OnSize(None)
 
@@ -301,7 +385,7 @@ class TerminalCtrl(wx.Control):
         self.Refresh()
 
     def SetFont(self, font):
-        self.SetFont(font)
+        super().SetFont(font)
 
         # Now we must recalculate
         self.InvalidateMetrics()
@@ -337,9 +421,6 @@ class TerminalCtrl(wx.Control):
         return self._buffer.GetWrap()
 
     def DoGetBestClientSize(self):
-        dc = wx.ScreenDC()
-        dc.SetFont(self.GetFont())
-
         textWidth, textHeight = self.GetTextMetrics()
         spacing = self.GetSpacing()
 
@@ -348,23 +429,27 @@ class TerminalCtrl(wx.Control):
         width = 0
         scrollbarWidth = wx.SystemSettings.GetMetric(wx.SYS_HSCROLL_Y)
 
-        if self.GetWrap():
-            width, _ = self.GetParent().ClientSize
-            width = math.floor((width - scrollbarWidth) / textWidth)
-        else:
+        if not self.GetWrap():
             for line in self._buffer:
                 width = max(width, len(line))
 
+        if self.GetWrap() or width == 0:
+            width, _ = self.GetParent().ClientSize
+            width = math.floor((width - scrollbarWidth) / textWidth)
+
+        if height == 0:
+            _, height = self.GetParent().ClientSize
+
         # Refresh scrollbar size
         if self.GetWrap():
-            self._canvas.ShowScrollbars(False, True)
+            self.ShowScrollbars(False, True)
         else:
-            self._canvas.ShowScrollbars(True, True)
+            self.ShowScrollbars(True, True)
 
-        self._canvas.SetScrollbars(textWidth, textHeight + spacing,
-                                   width, buflen, 0)
+        self.SetScrollbars(textWidth, textHeight + spacing, width, buflen, 0)
 
-        width = (width * textWidth)  # - scrollbarWidth
+        width = (width * textWidth)
+
         return wx.Size(width, height)
 
     def InvalidateMetrics(self):
@@ -381,7 +466,7 @@ class TerminalCtrl(wx.Control):
         row = math.ceil(point.y / (textHeight + spacing))
         col = math.floor(point.x / textWidth)
 
-        return (col, row)
+        return col, row
 
     def BufferToLogical(self, col, row):
         textWidth, textHeight = self.GetTextMetrics()
@@ -413,68 +498,78 @@ class TerminalCtrl(wx.Control):
         dc.SetTextForeground(foreColor)
         dc.SetFont(self.GetFont())
 
-        highBackColor = wx.SystemSettings.GetColour(wx.SYS_COLOUR_HIGHLIGHT)
-        highBackBrush = wx.Brush(highBackColor, wx.SOLID)
-        highForeColor = wx.SystemSettings.GetColour(wx.SYS_COLOUR_HIGHLIGHTTEXT)
-
         textWidth, textHeight = self.GetTextMetrics()
-        selection = self._buffer.GetSelection()
-        sS = selection.GetStart()
-        sE = selection.GetEnd()
 
         lineNo = 0
         for line in self._buffer:
-            lineNo += 1
-            start = self._buffer.CursorToIndex(lineNo, 0)
-            # end = start + len(line)
-            end = self._buffer.CursorToIndex(lineNo+1, 0)
-            _, y = self.BufferToLogical(0, lineNo)
+            for wrap in line:
+                lineNo += 1
+                _, y = self.BufferToLogical(0, lineNo)
 
-            if selection.IsSelected():
-                if sS >= start and sS < end:  # Selection starts on this line
-                    dc.SetBackground(highBackBrush)
-                    dc.SetTextForeground(highForeColor)
+                dc.DrawText(str(wrap), 0, y)
 
-                if sE >= start and sE < end:  # Selection ends on this line
-                    pass
-                    # dc.SetBackground(backBrush)
-                    # dc.SetTextForeground(foreColor)
+        self._DrawSelection(dc)
 
-            dc.DrawText(line, 0, y)
+    def _DrawSelection(self, dc):
+        selection = self._buffer.GetSelection()
+        self._overlay.Reset()
 
-#        highlight = False
-#        list = []
-#        coords = []
-#
-#        for char in range(len(self._buffer)):
-#            col, row = self._buffer.IndexToCursor(char)
-#
-#            if highlight is not self._buffer.GetSelection().IsSelected(char):
-#                # Flush list
-#                dc.DrawTextList(list, coords, foreColor, backColor)
-#
-#                highlight = self._buffer.GetSelection().IsSelected(char)
-#                tempColor = backColor
-#                backColor = foreColor
-#                backBrush = wx.Brush(backColor, wx.SOLID)
-#                foreColor = tempColor
-#
-#            list.append(self._buffer[char])
-#            coords.append(self.BufferToLogical(col, row))
-#
-#        dc.DrawTextList(list, coords, foreColor, backColor)
+        if not selection.IsSelected():
+            return
+
+        highBackColor = wx.SystemSettings.GetColour(wx.SYS_COLOUR_HIGHLIGHT)
+        highBackBrush = wx.Brush(highBackColor, wx.SOLID)
+        highForeColor = wx.SystemSettings.GetColour(wx.SYS_COLOUR_GRAYTEXT)
+
+        startIdx = selection.GetStart()
+        endIdx = selection.GetEnd()
+        selStart = self._buffer.IndexToCursor(startIdx)
+        selEnd = self._buffer.IndexToCursor(endIdx)
+
+        odc = wx.DCOverlay(self._overlay, dc)
+        odc.Clear()
+
+        dc.SetBackground(highBackBrush)
+        dc.SetTextForeground(highForeColor)
+
+        # Calculate locations
+        left = self.BufferToLogical(selStart[0], selStart[1])
+        _, lineHeight = self.GetTextMetrics()
+        textLines = self._buffer[startIdx - selStart[0]:endIdx].split(os.linesep)
+
+        for row in range(selStart[1], selEnd[1] + 1):
+            line = textLines[row - selStart[1]]
+            lineLen = len(line)
+
+            if row == selStart[1]:
+                startX, startY = left
+                line = line[selStart[0]:]
+            else:
+                startX, startY = 0, (row - 1) * lineHeight
+
+            if row == selEnd[1]:
+                end = selEnd[0]
+            else:
+                end = lineLen
+
+            endX, _ = self.BufferToLogical(end, row)
+            width, height = endX - startX, lineHeight
+
+            rect = wx.Rect(startX, startY, width + 1, height)
+            dc.DrawRectangle(rect)
+            dc.DrawText(line, startX, startY)
+
+        # To ensure the overlay is destroyed before the device context
+        del odc
 
     def _OnPaint(self, event):
-        dc = wx.BufferedPaintDC(self._canvas)
-        self._canvas.PrepareDC(dc)
+        dc = wx.BufferedPaintDC(self)
+        self.PrepareDC(dc)
         self._Draw(dc)
 
     def _OnSize(self, event):
         textWidth, textHeight = self.GetTextMetrics()
-        fullWinWidth, fullWinHeight = self.ClientSize
-        self._canvas.SetSize(wx.Size(fullWinWidth, fullWinHeight))
-
-        wW = fullWinWidth - wx.SystemSettings.GetMetric(wx.SYS_HSCROLL_Y)
+        wW, _ = self.VirtualSize
 
         if not self.GetWrap():
             return
@@ -489,18 +584,28 @@ class TerminalCtrl(wx.Control):
         pass
 
     def _OnMouseDown(self, event):
-        pos = event.GetPosition()
-        x, y = self.LogicalToBuffer(pos)
-        index = self._buffer.CursorToIndex(x, y)
+        pos = self.CalcUnscrolledPosition(event.GetPosition())
+        col, row = self.LogicalToBuffer(pos)
+        index = self._buffer.CursorToIndex(col, row)
 
-        self._buffer.SetSelectionStart(index)
+        self._buffer.SetSelectionStart(0)
+        self._buffer.SetSelectionEnd(0)
+
+        self._dragStart = index
+
+        self.Refresh()
 
     def _OnMouseMove(self, event):
         if event.Dragging() and event.LeftIsDown():
-            pos = event.GetPosition()
-            x, y = self.LogicalToBuffer(pos)
-            index = self._buffer.CursorToIndex(x, y)
+            pos = self.CalcUnscrolledPosition(event.GetPosition())
+            col, row = self.LogicalToBuffer(pos)
+            index = self._buffer.CursorToIndex(col, row)
 
-            self._buffer.SetSelectionEnd(index)
+            if self._dragStart < index:
+                self._buffer.SetSelectionStart(self._dragStart)
+                self._buffer.SetSelectionEnd(index + 1)
+            else:
+                self._buffer.SetSelectionStart(index)
+                self._buffer.SetSelectionEnd(self._dragStart + 1)
 
             self.Refresh()
