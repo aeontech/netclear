@@ -250,6 +250,25 @@ class _TextBuffer:
     def GetNumLines(self):
         return len(self._lines)
 
+    def GetNumRows(self):
+        rows = 0
+
+        for line in self._lines:
+            for wrap in line:
+                rows += 1
+
+        return rows
+
+    def GetLineForRow(self, row):
+        lineNo = 1
+
+        for line in self._lines:
+            for wrap in line:
+                if row == lineNo:
+                    return wrap
+
+                lineNo += 1
+
     def _processLines(self):
         del self._lines
         self._lines = []
@@ -375,6 +394,7 @@ class TerminalCtrl(ScrolledPanel):
 
         self.Bind(wx.EVT_LEFT_DOWN, self._OnMouseDown)
         self.Bind(wx.EVT_MOTION, self._OnMouseMove)
+        self.Bind(wx.EVT_LEFT_UP, self._OnMouseUp)
 
         self._OnSize(None)
 
@@ -467,7 +487,7 @@ class TerminalCtrl(ScrolledPanel):
         row = math.ceil(point.y / (textHeight + spacing))
         col = math.floor(point.x / textWidth)
 
-        line = self._GetLineAtRow(row)
+        line = self._buffer.GetLineForRow(row)
         lineLen = len(line)
         col = min(lineLen - 1, col)
 
@@ -540,11 +560,9 @@ class TerminalCtrl(ScrolledPanel):
         # Calculate locations
         left = self.BufferToLogical(selStart[0], selStart[1])
         _, lineHeight = self.GetTextMetrics()
-        selectedLines = self._buffer[startIdx - selStart[0]:endIdx]
-        textLines = selectedLines.split(os.linesep)
 
         for row in range(selStart[1], selEnd[1] + 1):
-            line = textLines[row - selStart[1]]
+            line = self._buffer.GetLineForRow(row)
             lineLen = len(line)
 
             if row == selStart[1]:
@@ -555,6 +573,11 @@ class TerminalCtrl(ScrolledPanel):
 
             if row == selEnd[1]:
                 end = selEnd[0]
+
+                if row == selStart[1]:
+                    line = line[0:end - selStart[0]]
+                else:
+                    line = line[0:end]
             else:
                 end = lineLen
 
@@ -567,16 +590,6 @@ class TerminalCtrl(ScrolledPanel):
 
         # To ensure the overlay is destroyed before the device context
         del odc
-
-    def _GetLineAtRow(self, row):
-        lineNo = 1
-
-        for line in self._buffer:
-            for wrap in line:
-                if lineNo == row:
-                    return wrap
-
-                lineNo += 1
 
     def _OnPaint(self, event):
         dc = wx.BufferedPaintDC(self)
@@ -600,9 +613,21 @@ class TerminalCtrl(ScrolledPanel):
         pass
 
     def _OnMouseDown(self, event):
+        self.CaptureMouse()
+
+        lineSepLen = len(os.linesep)
+        maxY = self.GetTextMetrics()[1] * self._buffer.GetNumRows()
+
         pos = self.CalcUnscrolledPosition(event.GetPosition())
-        col, row = self.LogicalToBuffer(pos)
-        index = self._buffer.CursorToIndex(col, row)
+        pos = wx.Point(pos[0], max(1, pos[1]))
+
+        # If we have moved the mouse past the end of the document
+        # we should select the rest of the document
+        if pos.y > maxY:
+            index = len(self._buffer) - lineSepLen - 1
+        else:
+            col, row = self.LogicalToBuffer(pos)
+            index = self._buffer.CursorToIndex(col, row)
 
         self._buffer.SetSelectionStart(0)
         self._buffer.SetSelectionEnd(0)
@@ -613,9 +638,19 @@ class TerminalCtrl(ScrolledPanel):
 
     def _OnMouseMove(self, event):
         if event.Dragging() and event.LeftIsDown():
+            lineSepLen = len(os.linesep)
+            maxY = self.GetTextMetrics()[1] * self._buffer.GetNumRows()
+
             pos = self.CalcUnscrolledPosition(event.GetPosition())
-            col, row = self.LogicalToBuffer(pos)
-            index = self._buffer.CursorToIndex(col, row)
+            pos = wx.Point(pos[0], max(1, pos[1]))
+
+            # If we have moved the mouse past the end of the document
+            # we should select the rest of the document
+            if pos.y > maxY:
+                index = len(self._buffer) - lineSepLen - 1
+            else:
+                col, row = self.LogicalToBuffer(pos)
+                index = self._buffer.CursorToIndex(col, row)
 
             if self._dragStart < index:
                 self._buffer.SetSelectionStart(self._dragStart)
@@ -625,3 +660,7 @@ class TerminalCtrl(ScrolledPanel):
                 self._buffer.SetSelectionEnd(self._dragStart + 1)
 
             self.Refresh()
+
+    def _OnMouseUp(self, event):
+        if self.HasCapture():
+            self.ReleaseMouse()
