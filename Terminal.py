@@ -296,6 +296,7 @@ class _TextBuffer:
         row = 1
         col = 0
         total = 0
+        limit = self.GetLimit()
         lineSepLen = len(os.linesep)
 
         for lineNo in range(len(self._lines)):
@@ -305,11 +306,11 @@ class _TextBuffer:
                 break
 
             # If index is beyond this line, add and skip
-            if total + lineLen < index:
+            if total + lineLen <= index:
                 total += lineLen
 
                 if (self.GetWrap()):
-                    row += math.ceil((lineLen - lineSepLen) / self.GetLimit())
+                    row += math.ceil((lineLen - lineSepLen) / limit)
                 else:
                     row += 1
 
@@ -349,8 +350,8 @@ class TerminalCtrl(ScrolledPanel):
         # Set initial buffer - This must be performed before calling __init__
         # on the parent class
         self._buffer = _TextBuffer()
-        self._buffer.SetSelectionStart(182)
-        self._buffer.SetSelectionEnd(192)
+        self._buffer.SetSelectionStart(200)
+        self._buffer.SetSelectionEnd(223)
 
         super().__init__(parent, id, pos, size, style, name)
 
@@ -466,6 +467,10 @@ class TerminalCtrl(ScrolledPanel):
         row = math.ceil(point.y / (textHeight + spacing))
         col = math.floor(point.x / textWidth)
 
+        line = self._GetLineAtRow(row)
+        lineLen = len(line)
+        col = min(lineLen - 1, col)
+
         return col, row
 
     def BufferToLogical(self, col, row):
@@ -535,7 +540,8 @@ class TerminalCtrl(ScrolledPanel):
         # Calculate locations
         left = self.BufferToLogical(selStart[0], selStart[1])
         _, lineHeight = self.GetTextMetrics()
-        textLines = self._buffer[startIdx - selStart[0]:endIdx].split(os.linesep)
+        selectedLines = self._buffer[startIdx - selStart[0]:endIdx]
+        textLines = selectedLines.split(os.linesep)
 
         for row in range(selStart[1], selEnd[1] + 1):
             line = textLines[row - selStart[1]]
@@ -561,6 +567,16 @@ class TerminalCtrl(ScrolledPanel):
 
         # To ensure the overlay is destroyed before the device context
         del odc
+
+    def _GetLineAtRow(self, row):
+        lineNo = 1
+
+        for line in self._buffer:
+            for wrap in line:
+                if lineNo == row:
+                    return wrap
+
+                lineNo += 1
 
     def _OnPaint(self, event):
         dc = wx.BufferedPaintDC(self)
