@@ -1,4 +1,5 @@
-from .. import Base
+from ..Base import Base
+
 
 class sw49xx(Base):
     pass
