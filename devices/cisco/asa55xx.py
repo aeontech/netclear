@@ -1,4 +1,3 @@
-import wx
 from ..Base import Base
 
 
