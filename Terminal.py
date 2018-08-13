@@ -4,28 +4,6 @@ import math
 from wx.lib.scrolledpanel import ScrolledPanel
 
 
-def profile(fnc):
-    import cProfile
-    import pstats
-    import io
-
-    def inner(*args, **kwargs):
-        pr = cProfile.Profile()
-
-        pr.enable()
-        retval = fnc(*args, **kwargs)
-        pr.disable()
-
-        s = io.StringIO()
-        sortby = 'cumulative'
-        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        ps.print_stats()
-        print(s.getvalue())
-
-        return retval
-    return inner
-
-
 class _TextSelection:
     _start = 0
     _end = 0
