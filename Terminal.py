@@ -369,8 +369,6 @@ class TerminalCtrl(ScrolledPanel):
         # Set initial buffer - This must be performed before calling __init__
         # on the parent class
         self._buffer = _TextBuffer()
-        self._buffer.SetSelectionStart(200)
-        self._buffer.SetSelectionEnd(223)
 
         super().__init__(parent, id, pos, size, style, name)
 
@@ -441,11 +439,24 @@ class TerminalCtrl(ScrolledPanel):
     def GetWrap(self):
         return self._buffer.GetWrap()
 
+    def SetSelectionStart(self, start):
+        self._buffer.SetSelectionStart(start)
+
+    def SetSelectionEnd(self, end):
+        self._buffer.SetSelectionEnd(end)
+
+    def GetSelected(self):
+        selection = self._buffer.GetSelection()
+        start = selection.GetStart()
+        end = selection.GetEnd()
+
+        return self._buffer[start:end]
+
     def DoGetBestClientSize(self):
         textWidth, textHeight = self.GetTextMetrics()
         spacing = self.GetSpacing()
 
-        buflen = self._buffer.GetNumLines()
+        buflen = self._buffer.GetNumRows()
         height = (textHeight + spacing) * buflen
         width = 0
         scrollbarWidth = wx.SystemSettings.GetMetric(wx.SYS_HSCROLL_Y)
