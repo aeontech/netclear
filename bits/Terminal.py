@@ -1,4 +1,3 @@
-import os
 import wx
 import math
 from wx.lib.scrolledpanel import ScrolledPanel
@@ -118,7 +117,7 @@ class _LineBuffer:
         limit = self.GetLimit()
         self._lines = []
 
-        lineLen = len(self._contents) - len(os.linesep)
+        lineLen = len(self._contents.rstrip())
 
         for i in range(math.ceil(lineLen/limit)):
             start = i * limit
@@ -251,8 +250,8 @@ class _TextBuffer:
         del self._lines
         self._lines = []
 
-        for line in self._contents.split(os.linesep):
-            lineObj = _LineBuffer(line + os.linesep)
+        for line in self._contents.splitlines(True):
+            lineObj = _LineBuffer(line)
             self._lines.append(lineObj)
 
         self._updateLines()
@@ -268,24 +267,28 @@ class _TextBuffer:
     def CursorToIndex(self, col, row):
         index = 0
         lineNo = 0
-        lineSepLen = len(os.linesep)
 
         for i in range(len(self._lines)):
+            lineLen = len(str(self._lines[i]))
+
             for wrap in self._lines[i]:
                 wrapLen = len(wrap)
+                lineLen -= wrapLen
                 lineNo += 1
 
                 if not lineNo == row:
                     index += wrapLen
                     continue
 
-                index += min(col, wrapLen)
+                m = min(col, wrapLen)
+                index += m
+                lineLen -= m
                 break
 
             if lineNo == row:
                 break
             else:
-                index += lineSepLen
+                index += lineLen
 
         return index
 
@@ -294,10 +297,10 @@ class _TextBuffer:
         col = 0
         total = 0
         limit = self.GetLimit()
-        lineSepLen = len(os.linesep)
 
         for lineNo in range(len(self._lines)):
             lineLen = len(self._lines[lineNo])
+            lineEnd = lineLen - len(str(self._lines[lineNo]).rstrip())
 
             if total >= index:
                 break
@@ -307,7 +310,7 @@ class _TextBuffer:
                 total += lineLen
 
                 if (self.GetWrap()):
-                    row += math.ceil((lineLen - lineSepLen) / limit)
+                    row += math.ceil((lineLen - lineEnd) / limit)
                 else:
                     row += 1
 
@@ -604,7 +607,6 @@ class TerminalCtrl(ScrolledPanel):
     def _OnMouseDown(self, event):
         self.CaptureMouse()
 
-        lineSepLen = len(os.linesep)
         maxY = self.GetTextMetrics()[1] * self._buffer.GetNumRows()
 
         pos = self.CalcUnscrolledPosition(event.GetPosition())
@@ -613,7 +615,7 @@ class TerminalCtrl(ScrolledPanel):
         # If we have moved the mouse past the end of the document
         # we should select the rest of the document
         if pos.y > maxY:
-            index = len(self._buffer) - lineSepLen - 1
+            index = len(str(self._buffer).rstrip()) - 1
         else:
             col, row = self.LogicalToBuffer(pos)
             index = self._buffer.CursorToIndex(col, row)
@@ -627,7 +629,6 @@ class TerminalCtrl(ScrolledPanel):
 
     def _OnMouseMove(self, event):
         if event.Dragging() and event.LeftIsDown():
-            lineSepLen = len(os.linesep)
             maxY = self.GetTextMetrics()[1] * self._buffer.GetNumRows()
 
             pos = self.CalcUnscrolledPosition(event.GetPosition())
@@ -636,7 +637,7 @@ class TerminalCtrl(ScrolledPanel):
             # If we have moved the mouse past the end of the document
             # we should select the rest of the document
             if pos.y > maxY:
-                index = len(self._buffer) - lineSepLen - 1
+                index = len(str(self._buffer).rstrip()) - 1
             else:
                 col, row = self.LogicalToBuffer(pos)
                 index = self._buffer.CursorToIndex(col, row)
