@@ -6,7 +6,7 @@ from ..Base import Base
 class asa55xx(Base):
     def execute(self):
         """ Written for Cisco 5550 """
-        self.prompt("Power on the device then click 'OK'.")
+        self.prompt("Power on the device after clicking 'OK'.")
 
         self.wait('Use BREAK or ESC to interrupt boot.')
 
@@ -14,9 +14,9 @@ class asa55xx(Base):
         for i in range(1, 3):
             self.send_break()
 
-        self.ewait('rommon #\d{1,2}>')
+        self.ewait('rommon #\\d{1,2}>')
         self.send('confreg 0x41')
-        self.ewait('rommon #\d{1,2}>')
+        self.ewait('rommon #\\d{1,2}>')
         self.send('boot')
 
         out = self.ewait('|'.join(list(map(re.escape, [
@@ -30,7 +30,7 @@ class asa55xx(Base):
 
         # It could have been captured by the previous wait
         if out.rfind('ciscoasa') == -1:
-            out = self.ewait('^ciscoasa(?:>|#)$')
+            out = self.ewait('^ciscoasa[>#])$')
 
         # We probably aren't enabled
         if out.rfind('ciscoasa>'):
