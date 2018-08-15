@@ -1,6 +1,5 @@
 import os
 import wx
-import sys
 
 
 class Prompt:
@@ -86,13 +85,17 @@ class Prompt:
 
         # Add bindings
         frame.Bind(wx.EVT_BUTTON, lambda e: frame.Close(True),  cancel)
-        frame.Bind(wx.EVT_BUTTON, lambda e: app.ExitMainLoop(), submit)
+        frame.Bind(wx.EVT_BUTTON, lambda e: self.onSubmit(app, frame), submit)
         frame.Bind(wx.EVT_CHOICE, self.onComms,  comms)
         frame.Bind(wx.EVT_CHOICE, self.onBauds,  bauds)
         frame.Bind(wx.EVT_TREE_SEL_CHANGED, lambda e: self.onTree(e, tree),
                    tree)
 
         app.MainLoop()
+
+    def onSubmit(self, app, frame):
+        frame.Close()
+        app.ExitMainLoop()
 
     def onComms(self, event):
         self.settings['comms'] = event.GetString()
@@ -150,7 +153,6 @@ class _PromptFrame(wx.Frame):
 
     def onExit(self, event):
         self.Destroy()
-        sys.exit()
 
     def onIssue(self, event):
         wx.MessageBox("Not yet implemented... Talk to Shane!",

@@ -1,4 +1,5 @@
 import wx
+import re
 import math
 from wx.lib.scrolledpanel import ScrolledPanel
 
@@ -133,10 +134,14 @@ class _TextBuffer:
     _limit = 80
     _selection = _TextSelection()
 
+    _re_esc = None
+
     def __init__(self, contents=''):
+        self._re_esc = re.compile('\b')
+
         self._contents = contents
         self._lines = []
-        self._processLines()
+        self._process()
 
     def __str__(self):
         return self._contents
@@ -146,11 +151,11 @@ class _TextBuffer:
 
     def __setitem__(self, key, value):
         self._contents[key] = value
-        self._processLines()
+        self._process()
 
     def __delitem__(self, key):
         del self._contents[key]
-        self._processLines()
+        self._process()
 
     def __contains__(self, item):
         return item in self._contents
@@ -162,7 +167,7 @@ class _TextBuffer:
         buff = self()
         buff._contents = self._contents + value
         buff._selection = self._selection
-        buff._processLines()
+        buff._process()
 
         return buff
 
@@ -170,13 +175,13 @@ class _TextBuffer:
         buff = self()
         buff._contents = value + self._contents
         buff._selection = self._selection
-        buff._processLines()
+        buff._process()
 
         return buff
 
     def __iadd__(self, value):
         self._contents += value
-        self._processLines()
+        self._process()
         return self
 
     def __iter__(self):
@@ -245,6 +250,29 @@ class _TextBuffer:
                     return wrap
 
                 lineNo += 1
+
+    def _process(self):
+        self._processText()
+        self._processLines()
+
+    def _processText(self):
+        contents = self._contents
+        index = 0
+
+        while 1:
+            index = self._re_esc.search(contents, index)
+
+            if index is None:
+                break
+
+            index = index.span()[0]
+
+            # Backspace character
+            if contents[index] == '\b':
+                contents = contents[:index-1] + contents[index+1:]
+                index -= 1
+
+        self._contents = contents
 
     def _processLines(self):
         del self._lines
@@ -331,7 +359,7 @@ class _TextBuffer:
         return col, row
 
 
-class TerminalCtrl(ScrolledPanel):
+class TerminalCtrl(ScrolledPanel, wx.TextCtrl):
     _buffer = None
     _metrics = None
     _lineSpacing = 0
@@ -346,6 +374,7 @@ class TerminalCtrl(ScrolledPanel):
                  ~(wx.BORDER_RAISED | wx.BORDER_STATIC | wx.BORDER_THEME)
 
         style |= wx.BORDER_NONE
+        style |= wx.WANTS_CHARS
 
         # Set initial buffer - This must be performed before calling __init__
         # on the parent class
