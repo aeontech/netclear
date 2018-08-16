@@ -182,6 +182,7 @@ class _TextBuffer:
     def __iadd__(self, value):
         self._contents += value
         self._process()
+
         return self
 
     def __iter__(self):

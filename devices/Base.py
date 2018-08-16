@@ -27,6 +27,7 @@ class Base:
     _lastbuffer = ''
 
     CTRL_C = '\x03'
+    ESC = '\x1B'
     ENTER = '\n'
 
     # Key map
