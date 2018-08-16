@@ -33,13 +33,7 @@ class sw45xx(Base):
         self.ewait('Resetting .......[\r\n]{1,2}rommon \\d{1,2} >|Signature v')
 
         # It *may* go back into rommon here
-        print('wait...')
         out = self.ewait('|'.join([
-            'Press RETURN to get started!',
-            'rommon \\d{1,2} >'
-        ]))
-        print('found...')
-        print('|'.join([
             'Press RETURN to get started!',
             'rommon \\d{1,2} >'
         ]))
@@ -48,8 +42,6 @@ class sw45xx(Base):
         if not out.rfind('rommon') == -1:
             self.send('boot')
             self.wait('Press RETURN to get started!')
-        else:
-            print('yep')
 
         self.send_raw('\r')
         out = self.ewait('Switch[#>]')
