@@ -126,6 +126,10 @@ class _LineBuffer:
 
             self._lines.append(self._contents[start:end])
 
+        # This was just an empty line
+        if not self._lines:
+            self._lines = ['']
+
 
 class _TextBuffer:
     _contents = None
@@ -339,7 +343,11 @@ class _TextBuffer:
                 total += lineLen
 
                 if (self.GetWrap()):
-                    row += math.ceil((lineLen - lineEnd) / limit)
+                    numLines = math.ceil((lineLen - lineEnd) / limit)
+
+                    # If the line is empty, we still want to add a line.
+                    # Enforce a minimum of one line here.
+                    row += max(1, numLines)
                 else:
                     row += 1
 
@@ -581,10 +589,14 @@ class TerminalCtrl(ScrolledPanel, wx.TextCtrl):
 
         # Calculate locations
         left = self.BufferToLogical(selStart[0], selStart[1])
-        _, lineHeight = self.GetTextMetrics()
+        textWidth, lineHeight = self.GetTextMetrics()
 
         for row in range(selStart[1], selEnd[1] + 1):
             line = self._buffer.GetLineForRow(row)
+            if line is None:
+                print("None line %d" % row)
+                print("Start: %r, End: %r" % (selStart, selEnd))
+
             lineLen = len(line)
 
             if row == selStart[1]:
@@ -604,6 +616,12 @@ class TerminalCtrl(ScrolledPanel, wx.TextCtrl):
                 end = lineLen
 
             endX, _ = self.BufferToLogical(end, row)
+
+            # If this is the end of a line, add to the selection
+            if (lineLen == 0 or line[-1] == '\r' or line[-1] == '\n') and \
+                    not row == selEnd[1]:
+                endX += textWidth * 0.5
+
             width, height = endX - startX, lineHeight
 
             rect = wx.Rect(startX, startY, width + 1, height)
