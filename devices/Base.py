@@ -126,9 +126,9 @@ class Base:
         self._terminal.AddChars(event.data)
 
     def onKeyDown(self, event):
-#        if 27 < event.GetKeyCode() < 256 and not event.HasAnyModifiers():
-#            event.Skip()
-#            return
+        # if 27 < event.GetKeyCode() < 256 and not event.HasAnyModifiers():
+        #     event.Skip()
+        #     return
 
         key = self._GetKeyPress(event)
 

@@ -26,7 +26,7 @@ class asa55xx(Base):
 
         if not out.rfind('Pre-configure Firewall') == -1:
             self.send('n')
-            out = self.wait("Type help or '?' for a list of available commands.")
+            out = self.wait("help or '?' for a list of available commands.")
 
         # It could have been captured by the previous wait
         if out.rfind('ciscoasa') == -1:
