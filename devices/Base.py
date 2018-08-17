@@ -205,6 +205,28 @@ class Base:
 
         print("CHAR:%d" % code)
 
+    def OnCopy(self):
+        if not wx.TheClipboard.Open():
+            return
+
+        selected = self._terminal.GetSelected()
+        wx.TheClipboard.SetData(wx.TextDataObject(selected))
+        wx.TheClipboard.Close()
+
+    def OnPaste(self):
+        if not wx.TheClipboard.Open():
+            return
+
+        text = wx.TextDataObject()
+        success = wx.TheClipboard.GetData(text)
+
+        wx.TheClipboard.Close()
+
+        if not success:
+            return
+
+        self.send_raw(text.GetText())
+
     def _GetKeyPress(self, event):
         keycode = event.GetKeyCode()
         keyname = self.map.get(keycode, None)
