@@ -1,6 +1,7 @@
 import wx
 import re
 import time
+from threading import Lock
 from threading import Thread
 from bits.Terminal import TerminalCtrl
 
@@ -52,9 +53,12 @@ class Base:
     _app = None
     _comms = None
     _wxObj = None
+    _tLock = None
     _thread = None
     _terminal = None
     _lastbuffer = ''
+
+    _closing = False
 
     CTRL_C = '\x03'
     ESC = '\x1B'
@@ -100,6 +104,7 @@ class Base:
         self._comms = communications
 
     def run(self):
+        self._tLock = Lock()
         self._thread = Thread(target=self.do_execute)
         self._thread.start()
         self.setup()
@@ -108,10 +113,7 @@ class Base:
         raise NotImplementedError()
 
     def do_execute(self):
-        # We just block until we can execute
-        while self._wxObj is None:
-            time.sleep(0.1)
-
+        self._tLock.acquire()
         self.execute()
         self.prompt("All done!")
 
@@ -160,6 +162,7 @@ class Base:
         EVT_SERIAL(frame, self.onSerialData)
 
         self._wxObj = frame
+        self._tLock.release()
         app.MainLoop()
 
     def showHotkeys(self, event):
@@ -167,9 +170,8 @@ class Base:
         dlg.ShowModal()
 
     def onClose(self, event):
-        if self._thread.isAlive():
-            self._thread._Thread_stop()
-
+        self._closing = True
+        self._thread.join()
         self._wxObj.Destroy()
         wx.App.Get().ExitMainLoop()
 
@@ -184,6 +186,8 @@ class Base:
         key = self._GetKeyPress(event)
 
         switcher = {
+            'Ctrl+C': lambda: self.OnCopy(),
+            'Ctrl+V': lambda: self.OnPaste(),
             'Ctrl+B': lambda: self.send_break(),
             'Ctrl+O': lambda: print(self._terminal.GetValue()),
             'RETURN': lambda: self.send_raw(self.ENTER),
@@ -255,6 +259,9 @@ class Base:
         bufflen = 0
 
         while True:
+            if self._closing:
+                raise SystemExit()
+
             data = self._comms.read(1024).decode()
             datalen = len(data)
 
@@ -279,6 +286,9 @@ class Base:
         expr = re.compile(expression)
 
         while True:
+            if self._closing:
+                raise SystemExit()
+
             data = self._comms.read(1024).decode()
             datalen = len(data)
 
