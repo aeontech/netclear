@@ -422,6 +422,10 @@ class TerminalCtrl(ScrolledPanel, wx.TextCtrl):
         self.InvalidateBestSize()
         self.Refresh()
 
+    # As per wx.TextEntry
+    def GetValue(self):
+        return self._buffer
+
     def SetFont(self, font):
         super().SetFont(font)
 
@@ -506,10 +510,6 @@ class TerminalCtrl(ScrolledPanel, wx.TextCtrl):
     def InvalidateMetrics(self):
         self._metrics = None
 
-    # As per wx.TextEntry
-    def GetValue(self):
-        return self._buffer
-
     def LogicalToBuffer(self, point):
         textWidth, textHeight = self.GetTextMetrics()
         spacing = self.GetSpacing()
@@ -542,6 +542,13 @@ class TerminalCtrl(ScrolledPanel, wx.TextCtrl):
             self._metrics = (textWidth, textHeight)
 
         return self._metrics
+
+    def GetNumVisibleRows(self):
+        _, textHeight = self.GetTextMetrics()
+        lineHeight = textHeight + self.GetSpacing()
+        _, screenHeight = self.GetClientSize()
+
+        return math.floor(screenHeight / lineHeight)
 
     def _Draw(self, dc):
         backColor = self.GetBackgroundColour()
@@ -593,9 +600,6 @@ class TerminalCtrl(ScrolledPanel, wx.TextCtrl):
 
         for row in range(selStart[1], selEnd[1] + 1):
             line = self._buffer.GetLineForRow(row)
-            if line is None:
-                print("None line %d" % row)
-                print("Start: %r, End: %r" % (selStart, selEnd))
 
             lineLen = len(line)
 
