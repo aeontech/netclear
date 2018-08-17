@@ -375,6 +375,7 @@ class TerminalCtrl(ScrolledPanel):
     _overlay = None
 
     _scrollPos = None
+    _scrollbarFollowText = True
 
     def __init__(self, parent, id=wx.ID_ANY, pos=wx.DefaultPosition,
                  size=wx.DefaultSize, style=wx.TAB_TRAVERSAL,
@@ -505,17 +506,28 @@ class TerminalCtrl(ScrolledPanel):
         # Refresh scrollbar size
         if self.GetWrap():
             self.ShowScrollbars(False, True)
+            self.EnableScrolling(False, True)
         else:
             self.ShowScrollbars(True, True)
+            self.EnableScrolling(True, True)
 
-        self.SetScrollbars(textWidth, textHeight + spacing, width, buflen, 0)
-        scrollPos = self._buffer.IndexToCursor(self._scrollPos)
+        self.SetScrollbars(textWidth, textHeight + spacing, width, buflen, False)
+
+        if self._scrollbarFollowText:
+            scrollPos = self._buffer.IndexToCursor(len(self._buffer))
+        else:
+            scrollPos = self._buffer.IndexToCursor(self._scrollPos)
+
         self.Scroll(scrollPos)
 
         width = (width * textWidth)
 
-        height = 5780
         return wx.Size(width, height)
+
+    def InvalidateBestSize(self):
+        super().InvalidateBestSize()
+        BestSize = self.GetBestSize()
+        self.CacheBestSize(BestSize)
 
     def InvalidateMetrics(self):
         self._metrics = None
@@ -704,7 +716,9 @@ class TerminalCtrl(ScrolledPanel):
             currScroll = currScroll[0], event.GetPosition()
 
         if (numRows - currScroll[1] - numVisibleRows) <= 0:
-            print('At the bottom!')
+            self._scrollbarFollowText = True
+        else:
+            self._scrollbarFollowText = False
 
         self.Scroll(currScroll)
         currScroll = self._buffer.CursorToIndex(currScroll[0], currScroll[1])
