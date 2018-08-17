@@ -18,6 +18,36 @@ class SerialEvent(wx.PyEvent):
         self.data = data
 
 
+
+class _HotkeyDialog(wx.Dialog):
+    def __init__(self, parent, id=wx.ID_ANY, title="Program Shortcuts",
+                 pos=wx.DefaultPosition, size=wx.DefaultSize,
+                 style=wx.DEFAULT_DIALOG_STYLE, name=wx.DialogNameStr):
+        super().__init__(parent, id, title, pos, size, style, name)
+        paddingH = wx.BoxSizer(wx.HORIZONTAL)
+        paddingL = wx.BoxSizer(wx.VERTICAL)
+        box = wx.BoxSizer(wx.VERTICAL)
+
+        # Just to prove I can be nasty too...
+        def add(ctrl):
+            box.Add(ctrl, wx.EXPAND)
+
+        def text(text):
+            return wx.StaticText(self, label=text)
+
+        add(text("The following shortkeys are defined"))
+        add(text("for use in this program:"))
+        add(text(""))
+        add(text("CTRL-C: Copy"))
+        add(text("CTRL-V: Paste"))
+        add(text("CTRL-B: Break"))
+
+        paddingL.Add(box, 1, wx.TOP | wx.BOTTOM, 10)
+        paddingH.Add(paddingL, 1, wx.LEFT | wx.RIGHT, 20)
+        self.SetSizer(paddingH)
+        self.Centre()
+
+
 class Base:
     _app = None
     _comms = None
@@ -83,7 +113,6 @@ class Base:
             time.sleep(0.1)
 
         self.execute()
-
         self.prompt("All done!")
 
     def setup(self):
@@ -97,30 +126,52 @@ class Base:
         frame = wx.Frame(None, title="NetClear: %s" % classname, size=size)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
+        # Configure Menu
+        fileMenu = wx.Menu()
+        quititem = fileMenu.Append(wx.ID_ANY, "&Quit")
+
+        helpMenu = wx.Menu()
+        hotkeyitem = helpMenu.Append(wx.ID_ANY, "Program &Shortcuts")
+
+        menubar = wx.MenuBar()
+        menubar.Append(fileMenu, '&File')
+        menubar.Append(helpMenu, '&Help')
+        frame.SetMenuBar(menubar)
+
         self._terminal = TerminalCtrl(frame)
         self._terminal.SetSpacing(0)
         self._terminal.SetWrap(True)
-
-        frame.Bind(wx.EVT_CLOSE, lambda e: self.onClose(e, frame, app))
-#        self._terminal.Bind(wx.EVT_CHAR, self.onChar, self._terminal)
-        self._terminal.Bind(wx.EVT_KEY_DOWN, self.onKeyDown, self._terminal)
-
-        EVT_SERIAL(frame, self.onSerialData)
 
         sizer.Add(self._terminal, 1, wx.EXPAND)
         frame.SetSizer(sizer)
         frame.SetMinSize(wx.Size(313, 260))
         frame.Show()
 
+        # Bind on window events
+        frame.Bind(wx.EVT_CLOSE, self.onClose)
+        self._terminal.Bind(wx.EVT_CHAR, self.onChar, self._terminal)
+        self._terminal.Bind(wx.EVT_KEY_DOWN, self.onKeyDown, self._terminal)
+
+        # Bind Menu handlers
+        frame.Bind(wx.EVT_MENU, self.onClose, quititem)
+        frame.Bind(wx.EVT_MENU, self.showHotkeys, hotkeyitem)
+
+        # Register for events from Serial Communications thread
+        EVT_SERIAL(frame, self.onSerialData)
+
         self._wxObj = frame
         app.MainLoop()
 
-    def onClose(self, event, frame, app):
+    def showHotkeys(self, event):
+        dlg = _HotkeyDialog(self._wxObj)
+        dlg.ShowModal()
+
+    def onClose(self, event):
         if self._thread.isAlive():
             self._thread._Thread_stop()
 
-        frame.Destroy()
-        app.ExitMainLoop()
+        self._wxObj.Destroy()
+        wx.App.Get().ExitMainLoop()
 
     def onSerialData(self, event):
         self._terminal.AddChars(event.data)

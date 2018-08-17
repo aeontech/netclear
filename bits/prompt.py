@@ -1,5 +1,6 @@
 import os
 import wx
+import sys
 
 
 class Prompt:
@@ -84,7 +85,7 @@ class Prompt:
         frame.Show()
 
         # Add bindings
-        frame.Bind(wx.EVT_BUTTON, lambda e: frame.Close(True),  cancel)
+        frame.Bind(wx.EVT_BUTTON, lambda e: frame.Close(False),  cancel)
         frame.Bind(wx.EVT_BUTTON, lambda e: self.onSubmit(app, frame), submit)
         frame.Bind(wx.EVT_CHOICE, self.onComms,  comms)
         frame.Bind(wx.EVT_CHOICE, self.onBauds,  bauds)
@@ -94,7 +95,7 @@ class Prompt:
         app.MainLoop()
 
     def onSubmit(self, app, frame):
-        frame.Close()
+        frame.Close(True)
         app.ExitMainLoop()
 
     def onComms(self, event):
@@ -149,10 +150,15 @@ class _PromptFrame(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self.onExit)
 
     def onClose(self, event):
-        self.Close(True)
+        self.Close(False)
 
     def onExit(self, event):
         self.Destroy()
+
+        # Veto had to be inverted... Thanks wxWindows
+        event.SetCanVeto(not event.CanVeto())
+        if not event.CanVeto():
+            sys.exit()
 
     def onIssue(self, event):
         wx.MessageBox("Not yet implemented... Talk to Shane!",

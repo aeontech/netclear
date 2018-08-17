@@ -511,7 +511,7 @@ class TerminalCtrl(ScrolledPanel):
             self.ShowScrollbars(True, True)
             self.EnableScrolling(True, True)
 
-        self.SetScrollbars(textWidth, textHeight + spacing, width, buflen, False)
+        self.SetScrollbars(textWidth, textHeight + spacing, width, buflen, True)
 
         if self._scrollbarFollowText:
             scrollPos = self._buffer.IndexToCursor(len(self._buffer))
