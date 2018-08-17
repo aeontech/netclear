@@ -368,11 +368,13 @@ class _TextBuffer:
         return col, row
 
 
-class TerminalCtrl(ScrolledPanel, wx.TextCtrl):
+class TerminalCtrl(ScrolledPanel):
     _buffer = None
     _metrics = None
     _lineSpacing = 0
     _overlay = None
+
+    _scrollPos = None
 
     def __init__(self, parent, id=wx.ID_ANY, pos=wx.DefaultPosition,
                  size=wx.DefaultSize, style=wx.TAB_TRAVERSAL,
@@ -388,6 +390,10 @@ class TerminalCtrl(ScrolledPanel, wx.TextCtrl):
         # Set initial buffer - This must be performed before calling __init__
         # on the parent class
         self._buffer = _TextBuffer()
+
+        # Initial scroll position - required for best client size, which is
+        # called upon window creation. Set to buffer index 0
+        self._scrollPos = 0
 
         super().__init__(parent, id, pos, size, style, name)
 
@@ -407,6 +413,7 @@ class TerminalCtrl(ScrolledPanel, wx.TextCtrl):
 
         self.Bind(wx.EVT_PAINT, self._OnPaint)
         self.Bind(wx.EVT_SIZE,  self._OnSize)
+        self.Bind(wx.EVT_SCROLLWIN, self._OnScroll)
         self.Bind(wx.EVT_ERASE_BACKGROUND, self._OnEraseBackground)
 
         self.Bind(wx.EVT_LEFT_DOWN, self._OnMouseDown)
@@ -502,9 +509,12 @@ class TerminalCtrl(ScrolledPanel, wx.TextCtrl):
             self.ShowScrollbars(True, True)
 
         self.SetScrollbars(textWidth, textHeight + spacing, width, buflen, 0)
+        scrollPos = self._buffer.IndexToCursor(self._scrollPos)
+        self.Scroll(scrollPos)
 
         width = (width * textWidth)
 
+        height = 5780
         return wx.Size(width, height)
 
     def InvalidateMetrics(self):
@@ -651,6 +661,54 @@ class TerminalCtrl(ScrolledPanel, wx.TextCtrl):
 
         if self.GetWrap():
             self.InvalidateBestSize()
+
+    def _OnScroll(self, event):
+        evtType = event.GetEventType()
+        currScroll = self._buffer.IndexToCursor(self._scrollPos)
+        currPos = currScroll[0] if event.GetOrientation() == wx.HORIZONTAL \
+                                else currScroll[1]
+
+        # A few helper variables for the following lambdas
+        numRows = self._buffer.GetNumRows()
+        numVisibleRows = self.GetNumVisibleRows()
+        maxScroll = numRows - numVisibleRows
+
+        handlers = {
+             wx.EVT_SCROLLWIN_TOP.evtType[0]: lambda:
+                event.SetPosition(0)
+            ,wx.EVT_SCROLLWIN_BOTTOM.evtType[0]: lambda:
+                event.SetPosition(maxScroll)
+            ,wx.EVT_SCROLLWIN_LINEUP.evtType[0]: lambda:
+                event.SetPosition(max(0, currPos - 1))
+            ,wx.EVT_SCROLLWIN_LINEDOWN.evtType[0]: lambda:
+                event.SetPosition(min(maxScroll, currPos + 1))
+            ,wx.EVT_SCROLLWIN_PAGEUP.evtType[0]: lambda:
+                # Can this be applied to PAGELEFT?
+                event.SetPosition(max(0, currPos - numVisibleRows))
+            ,wx.EVT_SCROLLWIN_PAGEDOWN.evtType[0]: lambda:
+                # Can this be applied to PAGERIGHT?
+                event.SetPosition(min(maxScroll, currPos + numVisibleRows))
+            ,wx.EVT_SCROLLWIN_THUMBTRACK.evtType[0]: lambda:
+                0 == 0  # GetPosition is set appropriately
+            ,wx.EVT_SCROLLWIN_THUMBRELEASE.evtType[0]: lambda:
+                0 == 0  # GetPosition is set appropriately
+        }
+
+        # Set GetPosition appropriately
+        handlers[evtType]()
+
+        if event.GetOrientation() == wx.HORIZONTAL:
+            currScroll = event.GetPosition(), currScroll[1]
+
+        if event.GetOrientation() == wx.VERTICAL:
+            currScroll = currScroll[0], event.GetPosition()
+
+        if (numRows - currScroll[1] - numVisibleRows) <= 0:
+            print('At the bottom!')
+
+        self.Scroll(currScroll)
+        currScroll = self._buffer.CursorToIndex(currScroll[0], currScroll[1])
+        self._scrollPos = currScroll
 
     def _OnEraseBackground(self, event):
         # This is intentionally blank
