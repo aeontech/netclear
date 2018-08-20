@@ -137,6 +137,8 @@ class _TextBuffer:
     _lines = None
     _limit = 80
     _selection = _TextSelection()
+    _c2iCache = {}
+    _i2cCache = {}
 
     _re_esc = None
 
@@ -257,6 +259,9 @@ class _TextBuffer:
                 lineNo += 1
 
     def _process(self):
+        self._c2iCache = {}
+        self._i2cCache = {}
+
         self._processText()
         self._processLines()
 
@@ -301,6 +306,10 @@ class _TextBuffer:
         index = 0
         lineNo = 0
 
+        # Caching!
+        if "%d-%d" % (col, row) in self._c2iCache:
+            return self._c2iCache["%d-%d" % (col, row)]
+
         for i in range(len(self._lines)):
             lineLen = len(str(self._lines[i]))
 
@@ -323,6 +332,8 @@ class _TextBuffer:
             else:
                 index += lineLen
 
+        self._c2iCache["%d-%d" % (col, row)] = index
+
         return index
 
     def IndexToCursor(self, index):
@@ -330,6 +341,10 @@ class _TextBuffer:
         col = 0
         total = 0
         limit = self.GetLimit()
+
+        # Caching!
+        if index in self._i2cCache:
+            return self._i2cCache[index]
 
         for lineNo in range(len(self._lines)):
             lineLen = len(self._lines[lineNo])
@@ -364,6 +379,8 @@ class _TextBuffer:
                 col = index - total
                 total += col
                 break
+
+        self._i2cCache[index] = col, row
 
         return col, row
 
