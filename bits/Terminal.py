@@ -314,6 +314,12 @@ class _TextBuffer:
     def CursorToIndex(self, col, row):
         index = 0
         lineNo = 0
+        numRows = self.GetNumRows()
+
+        assert row > 0, 'Row "%d" below one' % row
+        assert row <= numRows, 'Row "%d" greater than total rows %d' % \
+                               (row, numRows)
+        assert col >= 0, 'Column "%d" invalid' % row
 
         # Caching!
         if "%d-%d" % (col, row) in self._c2iCache:
@@ -350,6 +356,9 @@ class _TextBuffer:
         col = 0
         total = 0
         limit = self.GetLimit()
+
+        if index < 0 or index > len(self):
+            raise IndexError('Invalid index position "%d".' % index)
 
         # Caching!
         if index in self._i2cCache:
@@ -541,15 +550,19 @@ class TerminalCtrl(ScrolledPanel):
 
         # If we are to scroll with the text, update the scroll index to
         # appropriate index
-        if self._scrollbarFollowText:
-            rows = self._buffer.GetNumRows()
+        if self._scrollbarFollowText and buflen > 0:
             visRows = self.GetNumVisibleRows()
 
-            rowAtTop = rows - visRows
+            rowAtTop = buflen - visRows
+            rowAtTop = max(1, rowAtTop)
 
             self._scrollPos = self._buffer.CursorToIndex(0, rowAtTop)
 
-        scrollPos = self._buffer.IndexToCursor(self._scrollPos)
+        if buflen == 0:
+            scrollPos = 0, 1
+        else:
+            scrollPos = self._buffer.IndexToCursor(self._scrollPos)
+
         # Adjust from 1-based rows to 0-based
         scrollPos = scrollPos[0], scrollPos[1] - 1
 
