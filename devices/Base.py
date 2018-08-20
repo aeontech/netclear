@@ -124,8 +124,9 @@ class Base:
         classname = self.__class__.__name__
 
         app = wx.App.Get()
+        AppTitle = "%s: %s" % (self._comms.port, classname)
         size = wx.Size(700, 450)
-        frame = wx.Frame(None, title="NetClear: %s" % classname, size=size)
+        frame = wx.Frame(None, title=AppTitle, size=size)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         # Configure Menu
