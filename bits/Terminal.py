@@ -139,6 +139,7 @@ class _TextBuffer:
     _selection = _TextSelection()
     _c2iCache = {}
     _i2cCache = {}
+    _numRows = None
 
     _re_esc = None
 
@@ -212,6 +213,7 @@ class _TextBuffer:
             return
 
         self._wrap = wrap
+        self.InvalidateCache()
         self._updateLines()
 
     def GetLimit(self):
@@ -222,6 +224,7 @@ class _TextBuffer:
             return
 
         self._limit = limit
+        self.InvalidateCache()
         self._updateLines()
 
     def GetSelection(self):
@@ -240,13 +243,16 @@ class _TextBuffer:
         return len(self._lines)
 
     def GetNumRows(self):
-        rows = 0
+        if self._numRows is None:
+            rows = 0
 
-        for line in self._lines:
-            for wrap in line:
-                rows += 1
+            for line in self._lines:
+                for wrap in line:
+                    rows += 1
 
-        return rows
+            self._numRows = rows
+
+        return self._numRows
 
     def GetLineForRow(self, row):
         lineNo = 1
@@ -258,10 +264,13 @@ class _TextBuffer:
 
                 lineNo += 1
 
-    def _process(self):
+    def InvalidateCache(self):
+        self._numRows = None
         self._c2iCache = {}
         self._i2cCache = {}
 
+    def _process(self):
+        self.InvalidateCache()
         self._processText()
         self._processLines()
 
