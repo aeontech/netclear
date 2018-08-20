@@ -541,12 +541,16 @@ class TerminalCtrl(ScrolledPanel):
             self._scrollPos = self._buffer.CursorToIndex(0, rowAtTop)
 
         scrollPos = self._buffer.IndexToCursor(self._scrollPos)
+        # Adjust from 1-based rows to 0-based
+        scrollPos = scrollPos[0], scrollPos[1] - 1
+
         self.Scroll(scrollPos)
 
         width = (width * textWidth)
 
         return wx.Size(width, height)
 
+    # Invalidates then immediatelt re-calculates best size
     def InvalidateBestSize(self):
         super().InvalidateBestSize()
         BestSize = self.GetBestSize()
@@ -700,6 +704,10 @@ class TerminalCtrl(ScrolledPanel):
     def _OnScroll(self, event):
         evtType = event.GetEventType()
         currScroll = self._buffer.IndexToCursor(self._scrollPos)
+
+        # Adjust from 1-based rows to 0-based
+        currScroll = currScroll[0], currScroll[1] - 1
+
         currPos = currScroll[0] if event.GetOrientation() == wx.HORIZONTAL \
                                 else currScroll[1]
 
@@ -738,12 +746,15 @@ class TerminalCtrl(ScrolledPanel):
         if event.GetOrientation() == wx.VERTICAL:
             currScroll = currScroll[0], event.GetPosition()
 
-        if (numRows - currScroll[1] - numVisibleRows) <= 0:
+        # +1 because currScroll is 1-based not 0-based
+        if (numRows - currScroll[1] - numVisibleRows + 1) <= 0:
             self._scrollbarFollowText = True
         else:
             self._scrollbarFollowText = False
 
         self.Scroll(currScroll)
+        # Adjust from 0-based rows to 1-based
+        currScroll = currScroll[0], currScroll[1] + 1
         currScroll = self._buffer.CursorToIndex(currScroll[0], currScroll[1])
         self._scrollPos = currScroll
 
