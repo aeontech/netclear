@@ -95,6 +95,13 @@ class Prompt:
         app.MainLoop()
 
     def onSubmit(self, app, frame):
+        if self.get('device') is None:
+            dlg = wx.MessageDialog(frame, "No device was selected. Please "
+                             "select a device.", style=wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
+
         frame.Close(True)
         app.ExitMainLoop()
 
