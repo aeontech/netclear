@@ -346,6 +346,8 @@ class _TextBuffer:
                 break
             else:
                 index += lineLen
+        else:
+            raise RuntimeError('Reached end of buffer')
 
         self._c2iCache["%d-%d" % (col, row)] = index
 
@@ -397,6 +399,8 @@ class _TextBuffer:
                 col = index - total
                 total += col
                 break
+        else:
+            raise RuntimeError('Reached end of buffer')
 
         self._i2cCache[index] = col, row
 
@@ -553,7 +557,8 @@ class TerminalCtrl(ScrolledPanel):
         if self._scrollbarFollowText and buflen > 0:
             visRows = self.GetNumVisibleRows()
 
-            rowAtTop = buflen - visRows
+            # +1 to convert to 1-based
+            rowAtTop = buflen - visRows + 1
             rowAtTop = max(1, rowAtTop)
 
             self._scrollPos = self._buffer.CursorToIndex(0, rowAtTop)
@@ -769,7 +774,7 @@ class TerminalCtrl(ScrolledPanel):
             currScroll = currScroll[0], event.GetPosition()
 
         # +1 because currScroll is 1-based not 0-based
-        if (numRows - currScroll[1] - numVisibleRows + 1) <= 0:
+        if (numRows - currScroll[1] - numVisibleRows - 1) <= 0:
             self._scrollbarFollowText = True
         else:
             self._scrollbarFollowText = False
