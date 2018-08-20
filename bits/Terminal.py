@@ -319,7 +319,7 @@ class _TextBuffer:
         assert row > 0, 'Row "%d" below one' % row
         assert row <= numRows, 'Row "%d" greater than total rows %d' % \
                                (row, numRows)
-        assert col >= 0, 'Column "%d" invalid' % row
+        assert col >= 0, 'Column "%d" invalid' % col
 
         # Caching!
         if "%d-%d" % (col, row) in self._c2iCache:
@@ -359,8 +359,8 @@ class _TextBuffer:
         total = 0
         limit = self.GetLimit()
 
-        if index < 0 or index > len(self):
-            raise IndexError('Invalid index position "%d".' % index)
+        assert index >= 0, 'Invalid index position "%d".' % index
+        assert index <= len(self), 'Invalid index position "%d".' % index
 
         # Caching!
         if index in self._i2cCache:
@@ -369,9 +369,6 @@ class _TextBuffer:
         for lineNo in range(len(self._lines)):
             lineLen = len(self._lines[lineNo])
             lineEnd = lineLen - len(str(self._lines[lineNo]).rstrip())
-
-            if total >= index:
-                break
 
             # If index is beyond this line, add and skip
             if total + lineLen <= index:
@@ -399,6 +396,11 @@ class _TextBuffer:
                 col = index - total
                 total += col
                 break
+
+
+            if total >= index:
+                break
+
         else:
             raise RuntimeError('Reached end of buffer')
 
@@ -595,7 +597,7 @@ class TerminalCtrl(ScrolledPanel):
 
         line = self._buffer.GetLineForRow(row)
         lineLen = len(line)
-        col = min(lineLen - 1, col)
+        col = min(max(0, lineLen - 1), col)
 
         return col, row
 
@@ -698,7 +700,7 @@ class TerminalCtrl(ScrolledPanel):
             endX, _ = self.BufferToLogical(end, row)
 
             # If this is the end of a line, add to the selection
-            if (lineLen == 0 or line[-1] == '\r' or line[-1] == '\n') and \
+            if (len(line) == 0 or line[-1] == '\r' or line[-1] == '\n') and \
                     not row == selEnd[1]:
                 endX += textWidth * 0.5
 
@@ -814,6 +816,7 @@ class TerminalCtrl(ScrolledPanel):
 
     def _OnMouseMove(self, event):
         if event.Dragging() and event.LeftIsDown():
+            maxSel = len(str(self._buffer).rstrip())
             maxY = self.GetTextMetrics()[1] * self._buffer.GetNumRows()
 
             pos = self.CalcUnscrolledPosition(event.GetPosition())
@@ -825,12 +828,18 @@ class TerminalCtrl(ScrolledPanel):
                 index = len(str(self._buffer).rstrip()) - 1
             else:
                 col, row = self.LogicalToBuffer(pos)
-                index = self._buffer.CursorToIndex(col, row)
+                try:
+                    col = max(0, col)
+                    index = self._buffer.CursorToIndex(col, row)
+                except RuntimeError:
+                    index = maxSel
 
             if self._dragStart < index:
+                # Drag forwards
                 self._buffer.SetSelectionStart(self._dragStart)
                 self._buffer.SetSelectionEnd(index + 1)
             else:
+                # Drag backwards
                 self._buffer.SetSelectionStart(index)
                 self._buffer.SetSelectionEnd(self._dragStart + 1)
 
