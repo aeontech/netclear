@@ -530,11 +530,17 @@ class TerminalCtrl(ScrolledPanel):
 
         self.SetScrollbars(textWidth, textHeight + spacing, width, buflen, True)
 
+        # If we are to scroll with the text, update the scroll index to
+        # appropriate index
         if self._scrollbarFollowText:
-            scrollPos = self._buffer.IndexToCursor(len(self._buffer))
-        else:
-            scrollPos = self._buffer.IndexToCursor(self._scrollPos)
+            rows = self._buffer.GetNumRows()
+            visRows = self.GetNumVisibleRows()
 
+            rowAtTop = rows - visRows
+
+            self._scrollPos = self._buffer.CursorToIndex(0, rowAtTop)
+
+        scrollPos = self._buffer.IndexToCursor(self._scrollPos)
         self.Scroll(scrollPos)
 
         width = (width * textWidth)
@@ -700,7 +706,7 @@ class TerminalCtrl(ScrolledPanel):
         # A few helper variables for the following lambdas
         numRows = self._buffer.GetNumRows()
         numVisibleRows = self.GetNumVisibleRows()
-        maxScroll = numRows - numVisibleRows
+        maxScroll = max(0, numRows - numVisibleRows)
 
         handlers = {
              wx.EVT_SCROLLWIN_TOP.evtType[0]: lambda:
