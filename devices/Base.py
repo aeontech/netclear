@@ -131,7 +131,12 @@ class Base:
 
         # Configure Menu
         fileMenu = wx.Menu()
-        quititem = fileMenu.Append(wx.ID_ANY, "&Quit")
+        copyitem = fileMenu.Append(wx.ID_COPY, "&Copy")
+        pasteitem = fileMenu.Append(wx.ID_PASTE, "&Paste")
+        fileMenu.AppendSeparator()
+        brkitem = fileMenu.Append(wx.ID_ANY, "&Break")
+        fileMenu.AppendSeparator()
+        quititem = fileMenu.Append(wx.ID_EXIT, "&Quit")
 
         helpMenu = wx.Menu()
         hotkeyitem = helpMenu.Append(wx.ID_ANY, "Program &Shortcuts")
@@ -150,6 +155,13 @@ class Base:
         frame.SetMinSize(wx.Size(313, 260))
         frame.Show()
 
+        # Set up accelerators
+        accelC = wx.AcceleratorEntry(wx.ACCEL_CTRL, ord('C'), wx.ID_COPY)
+        accelV = wx.AcceleratorEntry(wx.ACCEL_CTRL, ord('V'), wx.ID_PASTE)
+        accelB = wx.AcceleratorEntry(wx.ACCEL_CTRL, ord('B'), brkitem.GetId())
+        accel = wx.AcceleratorTable([accelC, accelV, accelB])
+        frame.SetAcceleratorTable(accel)
+
         # Bind on window events
         frame.Bind(wx.EVT_CLOSE, self.onClose)
         self._terminal.Bind(wx.EVT_CHAR, self.onChar, self._terminal)
@@ -158,6 +170,9 @@ class Base:
         # Bind Menu handlers
         frame.Bind(wx.EVT_MENU, self.onClose, quititem)
         frame.Bind(wx.EVT_MENU, self.showHotkeys, hotkeyitem)
+        frame.Bind(wx.EVT_MENU, lambda e: self.onCopy(), copyitem)
+        frame.Bind(wx.EVT_MENU, lambda e: self.onPaste(), pasteitem)
+        frame.Bind(wx.EVT_MENU, lambda e: self.send_break(), brkitem)
 
         # Register for events from Serial Communications thread
         EVT_SERIAL(frame, self.onSerialData)
@@ -179,24 +194,6 @@ class Base:
     def onSerialData(self, event):
         self._terminal.AddChars(event.data)
 
-    def onKeyDown(self, event):
-        # if 27 < event.GetKeyCode() < 256 and not event.HasAnyModifiers():
-        #     event.Skip()
-        #     return
-
-        key = self._GetKeyPress(event)
-
-        switcher = {
-            'Ctrl+C': lambda: self.OnCopy(),
-            'Ctrl+V': lambda: self.OnPaste(),
-            'Ctrl+B': lambda: self.send_break(),
-            'Ctrl+O': lambda: print(self._terminal.GetValue()),
-            'RETURN': lambda: self.send_raw(self.ENTER),
-        }
-
-        if key in switcher:
-            switcher.get(key)()
-
     def onChar(self, event):
         code = event.GetKeyCode()
 
@@ -206,7 +203,7 @@ class Base:
 
         print("CHAR:%d" % code)
 
-    def OnCopy(self):
+    def onCopy(self):
         if not wx.TheClipboard.Open():
             return
 
@@ -214,7 +211,7 @@ class Base:
         wx.TheClipboard.SetData(wx.TextDataObject(selected))
         wx.TheClipboard.Close()
 
-    def OnPaste(self):
+    def onPaste(self):
         if not wx.TheClipboard.Open():
             return
 
@@ -227,37 +224,6 @@ class Base:
             return
 
         self.send_raw(text.GetText())
-
-    def _GetKeyPress(self, event):
-        keycode = event.GetKeyCode()
-        keyname = self.map.get(keycode, None)
-        modifiers = ""
-
-        for mod, ch in ((event.ControlDown(), 'Ctrl+'),
-                        (event.AltDown(),     'Alt+'),
-                        (event.ShiftDown(),   'Shift+'),
-                        (event.MetaDown(),    'Meta+')):
-            if mod:
-                modifiers += ch
-
-        if keyname is None:
-            if 27 < keycode < 256:
-                keyname = chr(keycode)
-            else:
-                keyname = "(%s)unknown" % keycode
-
-        return modifiers + keyname
-
-    def _handle_key(self, event):
-        char = event.GetKeyCode()
-
-        if not 27 < char < 256:
-            return
-
-        char = chr(char)
-        char = char.upper() if event.ShiftDown() else char.lower()
-
-        self.send_raw(char)
 
     def prompt(self, message, caption="netclear"):
         style = wx.OK | wx.OK_DEFAULT | wx.STAY_ON_TOP | wx.ICON_INFORMATION
