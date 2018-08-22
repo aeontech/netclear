@@ -234,9 +234,14 @@ class _TextBuffer:
         self._selection = selection
 
     def SetSelectionStart(self, start):
+        assert start >= 0, "Selection start must be 0 or above. '%d' must " \
+                           "be greater than or equal to 0." % (start)
         self._selection.SetStart(start)
 
     def SetSelectionEnd(self, end):
+        assert end <= len(self), "Selection end must not exceed the buffer " \
+                                 "length. '%d' must be less than or equal " \
+                                 "to %d." % (end, len(self))
         self._selection.SetEnd(end)
 
     def GetNumLines(self):
@@ -794,6 +799,7 @@ class TerminalCtrl(ScrolledPanel):
     def _OnMouseDown(self, event):
         self.CaptureMouse()
 
+        maxSel = len(str(self._buffer).rstrip())
         maxY = self.GetTextMetrics()[1] * self._buffer.GetNumRows()
 
         pos = self.CalcUnscrolledPosition(event.GetPosition())
@@ -802,15 +808,16 @@ class TerminalCtrl(ScrolledPanel):
         # If we have moved the mouse past the end of the document
         # we should select the rest of the document
         if pos.y > maxY:
-            index = len(str(self._buffer).rstrip()) - 1
+            index = maxSel - 1
         else:
             col, row = self.LogicalToBuffer(pos)
             index = self._buffer.CursorToIndex(col, row)
+            index = min(maxSel, index)
 
-        self._buffer.SetSelectionStart(0)
-        self._buffer.SetSelectionEnd(0)
+        self._buffer._selection.SetStart(0)
+        self._buffer._selection.SetEnd(0)
 
-        self._dragStart = index
+        self._dragStart = max(0, index)
 
         self.Refresh()
 
@@ -828,20 +835,20 @@ class TerminalCtrl(ScrolledPanel):
                 index = len(str(self._buffer).rstrip()) - 1
             else:
                 col, row = self.LogicalToBuffer(pos)
-                try:
-                    col = max(0, col)
-                    index = self._buffer.CursorToIndex(col, row)
-                except RuntimeError:
-                    index = maxSel
+                col = max(0, col)
+                row = min(row, self._buffer.GetNumRows())
+                index = self._buffer.CursorToIndex(col, row)
+
+            index = max(0, index)
 
             if self._dragStart < index:
                 # Drag forwards
                 self._buffer.SetSelectionStart(self._dragStart)
-                self._buffer.SetSelectionEnd(index + 1)
+                self._buffer.SetSelectionEnd(min(maxSel, index + 1))
             else:
                 # Drag backwards
                 self._buffer.SetSelectionStart(index)
-                self._buffer.SetSelectionEnd(self._dragStart + 1)
+                self._buffer.SetSelectionEnd(min(maxSel, self._dragStart + 1))
 
             self.Refresh()
 
