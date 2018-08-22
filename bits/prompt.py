@@ -45,24 +45,26 @@ class Prompt:
         size = wx.Size(350, 330)
         style = wx.DEFAULT_FRAME_STYLE & ~(wx.MAXIMIZE_BOX | wx.RESIZE_BORDER)
         frame = _PromptFrame(None, title=self._title, size=size, style=style)
+        panel = wx.Panel(frame)
+        panelSizer = wx.BoxSizer(wx.VERTICAL)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         # Create widgets
-        comms_label = wx.StaticText(frame, label="Port")
-        bauds_label = wx.StaticText(frame, label="Baud Rate")
+        comms_label = wx.StaticText(panel, label="Port")
+        bauds_label = wx.StaticText(panel, label="Baud Rate")
 
-        comms = wx.Choice(frame, choices=self._comms, style=wx.EXPAND)
-        bauds = wx.Choice(frame, choices=self._bauds, style=wx.EXPAND)
+        comms = wx.Choice(panel, choices=self._comms, style=wx.EXPAND)
+        bauds = wx.Choice(panel, choices=self._bauds, style=wx.EXPAND)
         comms.SetSelection(0)
         bauds.SetSelection(0)
         self.settings['comms'] = self._comms[0]
         self.settings['baud'] = self._bauds[0]
 
-        tree = _TreeWidget(frame)
+        tree = _TreeWidget(panel)
         tree.setData(self._devs)
 
-        submit = wx.Button(frame, label="Let's Go!")
-        cancel = wx.Button(frame, label="Quit")
+        submit = wx.Button(panel, label="Let's Go!")
+        cancel = wx.Button(panel, label="Quit")
 
         # Create sizers
         grid = wx.FlexGridSizer(2, 2, 2)
@@ -78,9 +80,11 @@ class Prompt:
         sizer.Add(grid, 0, wx.EXPAND | wx.RIGHT | wx.LEFT | wx.TOP, 5)
         sizer.Add(tree, 1, wx.EXPAND | wx.ALL, 5)
         sizer.Add(btns, 0, wx.ALIGN_RIGHT | wx.RIGHT | wx.LEFT | wx.BOTTOM, 5)
+        panelSizer.Add(panel, 1, wx.EXPAND)
 
         # Add sizers to frame
-        frame.SetSizer(sizer)
+        panel.SetSizer(sizer)
+        frame.SetSizer(panelSizer)
         frame.SetMinSize(wx.Size(300, 250))
         frame.Show()
 

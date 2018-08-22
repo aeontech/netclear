@@ -127,6 +127,8 @@ class Base:
         AppTitle = "%s: %s" % (self._comms.port, classname)
         size = wx.Size(700, 450)
         frame = wx.Frame(None, title=AppTitle, size=size)
+        panel = wx.Panel(frame, style=wx.BORDER_NONE)
+        panelSizer = wx.BoxSizer(wx.VERTICAL)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         # Configure Menu
@@ -146,12 +148,14 @@ class Base:
         menubar.Append(helpMenu, '&Help')
         frame.SetMenuBar(menubar)
 
-        self._terminal = TerminalCtrl(frame)
+        self._terminal = TerminalCtrl(panel)
         self._terminal.SetSpacing(0)
         self._terminal.SetWrap(True)
 
         sizer.Add(self._terminal, 1, wx.EXPAND)
-        frame.SetSizer(sizer)
+        panelSizer.Add(panel, 1, wx.EXPAND)
+        panel.SetSizer(sizer)
+        frame.SetSizer(panelSizer)
         frame.SetMinSize(wx.Size(313, 260))
         frame.Show()
 
