@@ -1,5 +1,4 @@
 import re
-import time
 from ..Base import Base
 
 
@@ -64,4 +63,3 @@ class asa55xx(Base):
 
         self.send('no config-register')
         self.wait('ciscoasa(config)#')
-        time.sleep(1)
