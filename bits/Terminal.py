@@ -361,7 +361,7 @@ class _TextBuffer:
     def IndexToCursor(self, index):
         row = 1
         col = 0
-        total = 0
+        counted = 0         # Number of indexes counted
         limit = self.GetLimit()
 
         assert index >= 0, 'Invalid index position "%d".' % index
@@ -376,8 +376,8 @@ class _TextBuffer:
             lineEnd = lineLen - len(str(self._lines[lineNo]).rstrip())
 
             # If index is beyond this line, add and skip
-            if total + lineLen <= index:
-                total += lineLen
+            if counted + lineLen < index:
+                counted += lineLen
 
                 if (self.GetWrap()):
                     numLines = math.ceil((lineLen - lineEnd) / limit)
@@ -393,17 +393,18 @@ class _TextBuffer:
             for wrap in self._lines[lineNo]:
                 wrapLen = len(wrap)
 
-                if (total + wrapLen) < index:
-                    total += wrapLen
+                # Another wrapped row, no match
+                if (counted + wrapLen) < index:
+                    counted += wrapLen
                     row += 1
                     continue
 
-                col = index - total
-                total += col
+                col = index - counted
+                counted += col
                 break
 
 
-            if total >= index:
+            if counted >= index:
                 break
 
         else:
@@ -832,7 +833,7 @@ class TerminalCtrl(ScrolledPanel):
             # If we have moved the mouse past the end of the document
             # we should select the rest of the document
             if pos.y > maxY:
-                index = len(str(self._buffer).rstrip()) - 1
+                index = maxSel
             else:
                 col, row = self.LogicalToBuffer(pos)
                 col = max(0, col)
