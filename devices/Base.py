@@ -197,11 +197,12 @@ class Base:
     def onChar(self, event):
         code = event.GetUnicodeKey()
 
-        if not 27 < code < 256:
-            print('CHAR could not be processed for %d' % code)
         if code == wx.WXK_NONE:
             code = event.GetKeyCode()
 
+        if (not 27 < code < 256) or event.HasAnyModifiers():
+            # So we don't consume the event
+            event.Skip()
             return
 
         print("CHAR:%d" % code)
