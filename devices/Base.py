@@ -195,10 +195,13 @@ class Base:
         self._terminal.AddChars(event.data)
 
     def onChar(self, event):
-        code = event.GetKeyCode()
+        code = event.GetUnicodeKey()
 
         if not 27 < code < 256:
             print('CHAR could not be processed for %d' % code)
+        if code == wx.WXK_NONE:
+            code = event.GetKeyCode()
+
             return
 
         print("CHAR:%d" % code)
