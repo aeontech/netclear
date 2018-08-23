@@ -25,6 +25,7 @@ def get_supported_devices():
     return [
         'cisco\\asa55xx',
         'cisco\\rt7000',
+        'cisco\\sw29xx',
         'cisco\\sw35xx',
         'cisco\\sw37xx',
         'cisco\\sw45xx',
