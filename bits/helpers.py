@@ -22,6 +22,16 @@ def _get_serial_ports_linux():
     return []
 
 def get_supported_devices():
+    return [
+        'cisco\\asa55xx',
+        'cisco\\rt7000',
+        'cisco\\sw35xx',
+        'cisco\\sw45xx',
+        'cisco\\sw49xx',
+        'dell\\Force10'
+    ]
+
+    # The following is TEST CODE ONLY.
     devices = glob.glob('devices/*/*.py')
 
     mask = "devices%s" % os.sep
