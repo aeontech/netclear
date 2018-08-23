@@ -236,7 +236,7 @@ class Base:
 
         self.send_raw(text.GetText())
 
-    def prompt(self, message, caption="netclear"):
+    def prompt(self, message, caption="KillSwitch Notification"):
         style = wx.OK | wx.OK_DEFAULT | wx.STAY_ON_TOP | wx.ICON_INFORMATION
 
         dialog = wx.MessageDialog(None, message, caption, style)

@@ -137,7 +137,7 @@ class _PromptFrame(wx.Frame):
 
         # Create a status bar
         self.CreateStatusBar()
-        self.SetStatusText("Aeontech Net-Clear v%s" % self._ver)
+        self.SetStatusText("Aeontech KillSwitch v%s" % self._ver)
 
     def CreateMenuBar(self):
         """
@@ -182,11 +182,11 @@ class _PromptFrame(wx.Frame):
     def onAbout(self, event):
         ver = self._ver
 
-        wx.MessageBox("Net-Clear v%s\n\n"
+        wx.MessageBox("KillSwitch v%s\n\n"
                       "This program was created to aid in the secure "
                       "factory reset of networked devices, without prior "
                       "technical understanding of specific hardware." % ver,
-                      "About Net-Clear v%s" % ver,
+                      "About KillSwitch v%s" % ver,
                       wx.OK | wx.ICON_INFORMATION)
 
 
