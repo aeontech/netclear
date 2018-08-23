@@ -20,7 +20,6 @@ class SerialEvent(wx.PyEvent):
         self.data = data
 
 
-
 class _HotkeyDialog(wx.Dialog):
     def __init__(self, parent, id=wx.ID_ANY, title="Program Shortcuts",
                  pos=wx.DefaultPosition, size=wx.DefaultSize,
@@ -130,16 +129,16 @@ class Base:
         AppTitle = "%s: %s" % (self._comms.port, classname)
         size = wx.Size(700, 450)
         frame = wx.Frame(None, title=AppTitle, size=size)
-        panel = wx.Panel(frame, style=wx.BORDER_NONE)
+        panel = wx.Panel(frame)
         panelSizer = wx.BoxSizer(wx.VERTICAL)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         # Configure Menu
         fileMenu = wx.Menu()
-        copyitem = fileMenu.Append(wx.ID_COPY, "&Copy")
-        pasteitem = fileMenu.Append(wx.ID_PASTE, "&Paste")
+        copyitem = fileMenu.Append(wx.ID_COPY, "&Copy\tCtrl-C")
+        pasteitem = fileMenu.Append(wx.ID_PASTE, "&Paste\tCtrl-V")
         fileMenu.AppendSeparator()
-        brkitem = fileMenu.Append(wx.ID_ANY, "&Break")
+        brkitem = fileMenu.Append(wx.ID_ANY, "&Break\tCtrl-B")
         fileMenu.AppendSeparator()
         quititem = fileMenu.Append(wx.ID_EXIT, "&Quit")
 
@@ -172,7 +171,6 @@ class Base:
         # Bind on window events
         frame.Bind(wx.EVT_CLOSE, self.onClose)
         self._terminal.Bind(wx.EVT_CHAR, self.onChar, self._terminal)
-        self._terminal.Bind(wx.EVT_KEY_DOWN, self.onKeyDown, self._terminal)
 
         # Bind Menu handlers
         frame.Bind(wx.EVT_MENU, self.onClose, quititem)
@@ -183,6 +181,9 @@ class Base:
 
         # Register for events from Serial Communications thread
         EVT_SERIAL(frame, self.onSerialData)
+
+        # Ensure the terminal has focus
+        self._terminal.SetFocus()
 
         self._wxObj = frame
         self._tLock.release()
