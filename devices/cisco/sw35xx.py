@@ -13,7 +13,16 @@ class sw35xx(Base):
 
         self.wait('switch: ')
         self.send('flash_init')
-        self.wait('switch: ')
+        while 1:
+            out = self.ewait('|'.join(list(map(re.escape, [
+                'switch: ',
+                '-- MORE --'
+            ]))))
+
+            if out.rfind('-- MORE --') == -1:
+                break
+
+            self.send_raw(' ')
 
         self.send('del flash:/config.text')
         self.wait('delete "flash:/config.text" (y/n)?')
