@@ -2,6 +2,7 @@ import os
 import wx
 import sys
 
+from .images import icon
 
 class Prompt:
     _title = None
@@ -48,6 +49,8 @@ class Prompt:
         panel = wx.Panel(frame)
         panelSizer = wx.BoxSizer(wx.VERTICAL)
         sizer = wx.BoxSizer(wx.VERTICAL)
+
+        frame.SetIcon(icon.GetIcon())
 
         # Create widgets
         comms_label = wx.StaticText(panel, label="Port")

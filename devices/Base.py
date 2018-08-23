@@ -3,6 +3,7 @@ import re
 import time
 from threading import Lock
 from threading import Thread
+from bits.images import icon
 from bits.Terminal import TerminalCtrl
 
 EVT_SERIAL_DATA = wx.NewId()
@@ -28,6 +29,8 @@ class _HotkeyDialog(wx.Dialog):
         paddingH = wx.BoxSizer(wx.HORIZONTAL)
         paddingL = wx.BoxSizer(wx.VERTICAL)
         box = wx.BoxSizer(wx.VERTICAL)
+
+        frame.SetIcon(icon.GetIcon())
 
         # Just to prove I can be nasty too...
         def add(ctrl):
