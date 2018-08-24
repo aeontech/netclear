@@ -721,7 +721,7 @@ class TerminalCtrl(ScrolledPanel):
 
     def _OnPaint(self, event):
         dc = wx.BufferedPaintDC(self)
-        self.PrepareDC(dc)
+        self.DoPrepareDC(dc)
         self._Draw(dc)
 
     def _OnSize(self, event):
