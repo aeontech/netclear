@@ -106,15 +106,18 @@ class Base:
         self._comms = communications
 
     def run(self):
-        self._tLock = Lock()
-        self._thread = Thread(target=self.do_execute)
-        self._thread.start()
+        self._run_thread()
         self.setup()
 
     def execute(self):
         raise NotImplementedError()
 
-    def do_execute(self):
+    def _run_thread(self):
+        self._tLock = Lock()
+        self._thread = Thread(target=self._do_execute)
+        self._thread.start()
+
+    def _do_execute(self):
         self._tLock.acquire()
         self.execute()
         self.prompt("All done!")
