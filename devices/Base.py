@@ -126,84 +126,118 @@ class Base:
         self.do_create_gui()
 
     def do_create_gui(self):
-        classname = self.__class__.__name__
-
         app = wx.App.Get()
+
+        self.InitInterface()
+        self.InitMenu()
+        self.InitAccelerators()
+        self.InitBindings()
+
+        # Register for events from Serial Communications thread
+        EVT_SERIAL(self.frame, self.onSerialData)
+
+        self._tLock.release()
+        app.MainLoop()
+
+    def InitInterface(self):
+        classname = self.__class__.__name__
         AppTitle = "%s: %s" % (self._comms.port, classname)
         size = wx.Size(700, 450)
-        frame = wx.Frame(None, title=AppTitle, size=size)
-        panel = wx.Panel(frame)
+        self.frame = wx.Frame(None, title=AppTitle, size=size)
+        panel = wx.Panel(self.frame)
         panelSizer = wx.BoxSizer(wx.VERTICAL)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        # Configure Menu
+        self.terminal = TerminalCtrl(panel)
+        self.terminal.SetSpacing(0)
+        self.terminal.SetWrap(True)
+
+        sizer.Add(self.terminal, 1, wx.EXPAND)
+        panelSizer.Add(panel, 1, wx.EXPAND)
+        panel.SetSizer(sizer)
+        self.frame.SetSizer(panelSizer)
+        self.frame.SetMinSize(wx.Size(313, 260))
+        self.frame.Show()
+
+        # Ensure the terminal has focus
+        self.terminal.SetFocus()
+
+    def InitMenu(self):
+        self.brkItemID = wx.NewId()
+        self.hotkeyItemID = wx.NewId()
+
         fileMenu = wx.Menu()
         copyitem = fileMenu.Append(wx.ID_COPY, "&Copy\tCtrl-C")
         pasteitem = fileMenu.Append(wx.ID_PASTE, "&Paste\tCtrl-V")
         fileMenu.AppendSeparator()
-        brkitem = fileMenu.Append(wx.ID_ANY, "&Break\tCtrl-B")
+        brkitem = fileMenu.Append(self.brkItemID, "&Break\tCtrl-B")
         fileMenu.AppendSeparator()
         quititem = fileMenu.Append(wx.ID_EXIT, "&Quit")
 
         helpMenu = wx.Menu()
-        hotkeyitem = helpMenu.Append(wx.ID_ANY, "Program &Shortcuts")
+        hotkeyitem = helpMenu.Append(self.hotkeyItemID, "Program &Shortcuts")
 
         menubar = wx.MenuBar()
         menubar.Append(fileMenu, '&File')
         menubar.Append(helpMenu, '&Help')
-        frame.SetMenuBar(menubar)
+        self.frame.SetMenuBar(menubar)
 
-        self._terminal = TerminalCtrl(panel)
-        self._terminal.SetSpacing(0)
-        self._terminal.SetWrap(True)
+        # Bind Menu handlers
+        self.frame.Bind(wx.EVT_MENU, self.onClose, quititem)
+        self.frame.Bind(wx.EVT_MENU, self.showHotkeys, hotkeyitem)
+        self.frame.Bind(wx.EVT_MENU, lambda e: self.onCopy(), copyitem)
+        self.frame.Bind(wx.EVT_MENU, lambda e: self.onPaste(), pasteitem)
+        self.frame.Bind(wx.EVT_MENU, lambda e: self.send_break(), brkitem)
 
-        sizer.Add(self._terminal, 1, wx.EXPAND)
-        panelSizer.Add(panel, 1, wx.EXPAND)
-        panel.SetSizer(sizer)
-        frame.SetSizer(panelSizer)
-        frame.SetMinSize(wx.Size(313, 260))
-        frame.Show()
-
+    def InitAccelerators(self):
         # Set up accelerators
         accelC = wx.AcceleratorEntry(wx.ACCEL_CTRL, ord('C'), wx.ID_COPY)
         accelV = wx.AcceleratorEntry(wx.ACCEL_CTRL, ord('V'), wx.ID_PASTE)
-        accelB = wx.AcceleratorEntry(wx.ACCEL_CTRL, ord('B'), brkitem.GetId())
+        accelB = wx.AcceleratorEntry(wx.ACCEL_CTRL, ord('B'), self.brkItemID)
         accel = wx.AcceleratorTable([accelC, accelV, accelB])
-        frame.SetAcceleratorTable(accel)
+        self.frame.SetAcceleratorTable(accel)
 
+    def InitBindings(self):
         # Bind on window events
-        frame.Bind(wx.EVT_CLOSE, self.onClose)
-        self._terminal.Bind(wx.EVT_CHAR, self.onChar, self._terminal)
-
-        # Bind Menu handlers
-        frame.Bind(wx.EVT_MENU, self.onClose, quititem)
-        frame.Bind(wx.EVT_MENU, self.showHotkeys, hotkeyitem)
-        frame.Bind(wx.EVT_MENU, lambda e: self.onCopy(), copyitem)
-        frame.Bind(wx.EVT_MENU, lambda e: self.onPaste(), pasteitem)
-        frame.Bind(wx.EVT_MENU, lambda e: self.send_break(), brkitem)
-
-        # Register for events from Serial Communications thread
-        EVT_SERIAL(frame, self.onSerialData)
-
-        # Ensure the terminal has focus
-        self._terminal.SetFocus()
-
-        self._wxObj = frame
-        self._tLock.release()
-        app.MainLoop()
+        self.frame.Bind(wx.EVT_CLOSE, self.onClose)
+        self.terminal.Bind(wx.EVT_CHAR_HOOK, self.onCharHook)
+        self.terminal.Bind(wx.EVT_CHAR, self.onChar)
+        self.terminal.Bind(wx.EVT_CHAR, self.onChar, self.frame)
+        self.terminal.Bind(wx.EVT_CHAR, self.onChar, self.terminal)
+        self.frame.Bind(wx.EVT_CHAR, self.onChar)
+        self.frame.Bind(wx.EVT_CHAR, self.onChar, self.frame)
+        self.frame.Bind(wx.EVT_CHAR, self.onChar, self.terminal)
 
     def showHotkeys(self, event):
-        dlg = _HotkeyDialog(self._wxObj)
+        dlg = _HotkeyDialog(self.frame)
         dlg.ShowModal()
 
     def onClose(self, event):
         self._closing = True
         self._thread.join()
-        self._wxObj.Destroy()
+        self.frame.Destroy()
         wx.App.Get().ExitMainLoop()
 
     def onSerialData(self, event):
-        self._terminal.AddChars(event.data)
+        self.terminal.AddChars(event.data)
+
+    def onCharHook(self, event):
+        print('OnCharHook...')
+        event.Skip()
+        event.DoAllowNextEvent()
+
+        evt = MyKeyEvent(wx.EVT_CHAR.evtType[0])
+
+        evt.KeyCode = event.GetUnicodeKey()
+        evt.RawKeyCode = event.GetRawKeyCode()
+        evt.UnicodeKey = event.GetKeyCode()
+
+        if not event.ShiftDown() and evt.KeyCode > 64 and evt.KeyCode < 91:
+            evt.KeyCode += 32
+            evt.RawKeyCode += 32
+            evt.UnicodeKey += 32
+
+        self.onChar(evt)
 
     def onChar(self, event):
         code = event.GetUnicodeKey()
@@ -216,13 +250,13 @@ class Base:
             event.Skip()
             return
 
-        print("CHAR:%d" % code)
+        self.send_raw(chr(code))
 
     def onCopy(self):
         if not wx.TheClipboard.Open():
             return
 
-        selected = self._terminal.GetSelected()
+        selected = self.terminal.GetSelected()
         wx.TheClipboard.SetData(wx.TextDataObject(selected))
         wx.TheClipboard.Close()
 
@@ -274,7 +308,7 @@ class Base:
                 bufflen += datalen
 
                 # update buffer
-                wx.PostEvent(self._wxObj, SerialEvent(data))
+                wx.PostEvent(self.frame, SerialEvent(data))
 
                 pos = (self._lastbuffer + buffer).rfind(message)
                 if (pos is not -1):
@@ -301,7 +335,7 @@ class Base:
                 bufflen += datalen
 
                 # update buffer
-                wx.PostEvent(self._wxObj, SerialEvent(data))
+                wx.PostEvent(self.frame, SerialEvent(data))
 
                 search = expr.search(self._lastbuffer + buffer)
                 if (search is not None):
@@ -309,3 +343,17 @@ class Base:
                     break
 
         return buffer
+
+class MyKeyEvent(wx.KeyEvent):
+    KeyCode = None
+    RawKeyCode = None
+    UnicodeKey = None
+
+    def GetKeyCode(self):
+        return self.KeyCode
+
+    def GetRawKeyCode(self):
+        return self.RawKeyCode
+
+    def GetUnicodeKey(self):
+        return self.UnicodeKey
