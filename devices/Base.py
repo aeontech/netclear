@@ -144,18 +144,14 @@ class Base:
         AppTitle = "%s: %s" % (self._comms.port, classname)
         size = wx.Size(700, 450)
         self.frame = wx.Frame(None, title=AppTitle, size=size)
-        panel = wx.Panel(self.frame)
-        panelSizer = wx.BoxSizer(wx.VERTICAL)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        self.terminal = TerminalCtrl(panel)
+        self.terminal = TerminalCtrl(self.frame)
         self.terminal.SetSpacing(0)
         self.terminal.SetWrap(True)
 
         sizer.Add(self.terminal, 1, wx.EXPAND)
-        panelSizer.Add(panel, 1, wx.EXPAND)
-        panel.SetSizer(sizer)
-        self.frame.SetSizer(panelSizer)
+        self.frame.SetSizer(sizer)
         self.frame.SetMinSize(wx.Size(313, 260))
         self.frame.Show()
 
