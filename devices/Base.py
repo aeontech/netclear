@@ -196,13 +196,7 @@ class Base:
     def InitBindings(self):
         # Bind on window events
         self.frame.Bind(wx.EVT_CLOSE, self.onClose)
-        self.terminal.Bind(wx.EVT_CHAR_HOOK, self.onCharHook)
         self.terminal.Bind(wx.EVT_CHAR, self.onChar)
-        self.terminal.Bind(wx.EVT_CHAR, self.onChar, self.frame)
-        self.terminal.Bind(wx.EVT_CHAR, self.onChar, self.terminal)
-        self.frame.Bind(wx.EVT_CHAR, self.onChar)
-        self.frame.Bind(wx.EVT_CHAR, self.onChar, self.frame)
-        self.frame.Bind(wx.EVT_CHAR, self.onChar, self.terminal)
 
     def showHotkeys(self, event):
         dlg = _HotkeyDialog(self.frame)
@@ -217,31 +211,13 @@ class Base:
     def onSerialData(self, event):
         self.terminal.AddChars(event.data)
 
-    def onCharHook(self, event):
-        print('OnCharHook...')
-        event.Skip()
-        event.DoAllowNextEvent()
-
-        evt = MyKeyEvent(wx.EVT_CHAR.evtType[0])
-
-        evt.KeyCode = event.GetUnicodeKey()
-        evt.RawKeyCode = event.GetRawKeyCode()
-        evt.UnicodeKey = event.GetKeyCode()
-
-        if not event.ShiftDown() and evt.KeyCode > 64 and evt.KeyCode < 91:
-            evt.KeyCode += 32
-            evt.RawKeyCode += 32
-            evt.UnicodeKey += 32
-
-        self.onChar(evt)
-
     def onChar(self, event):
         code = event.GetUnicodeKey()
 
         if code == wx.WXK_NONE:
             code = event.GetKeyCode()
 
-        if (not 27 < code < 256) or event.HasAnyModifiers():
+        if (not 27 < code < 256):
             # So we don't consume the event
             event.Skip()
             return
@@ -339,17 +315,3 @@ class Base:
                     break
 
         return buffer
-
-class MyKeyEvent(wx.KeyEvent):
-    KeyCode = None
-    RawKeyCode = None
-    UnicodeKey = None
-
-    def GetKeyCode(self):
-        return self.KeyCode
-
-    def GetRawKeyCode(self):
-        return self.RawKeyCode
-
-    def GetUnicodeKey(self):
-        return self.UnicodeKey
