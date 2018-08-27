@@ -425,12 +425,14 @@ class TerminalCtrl(ScrolledPanel):
     _scrollbarFollowText = True
 
     def __init__(self, parent, id=wx.ID_ANY, pos=wx.DefaultPosition,
-                 size=wx.DefaultSize, style=wx.TAB_TRAVERSAL,
-                 name=wx.ControlNameStr):
+                 size=wx.DefaultSize, style=0, name=wx.ControlNameStr):
 
         # Disallow borders
         style &= ~(wx.BORDER_DEFAULT | wx.BORDER_SIMPLE | wx.BORDER_SUNKEN) & \
                  ~(wx.BORDER_RAISED | wx.BORDER_STATIC | wx.BORDER_THEME)
+
+        # Disallow TAB_TRAVERSAL
+        style &= ~wx.TAB_TRAVERSAL
 
         style |= wx.BORDER_NONE
         style |= wx.WANTS_CHARS
