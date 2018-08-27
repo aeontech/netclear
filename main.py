@@ -3,9 +3,9 @@
 from __future__ import print_function
 
 import wx
+import serial
 import locale
 from bits import helpers
-from bits import netserial
 from devices import devices
 from bits.prompt import Prompt
 from serial.serialutil import SerialException
@@ -27,7 +27,7 @@ port = selected.get('comms')
 baud = selected.get('baud')
 
 try:
-    cereal = netserial.Serial(port, baud, timeout=0.1)
+    cereal = serial.Serial(port, baud, timeout=0.1)
 except SerialException as ex:
     dialog = wx.MessageDialog(None, 'Serial Error: {0}'.format(ex))
     dialog.ShowModal()
