@@ -1,6 +1,8 @@
 import re
+import math
 
 from .Selection import Selection
+
 
 class Line:
     _contents = None
@@ -275,7 +277,7 @@ class Text:
         self._lines = []
 
         for line in self._contents.splitlines(True):
-            lineObj = _LineBuffer(line)
+            lineObj = Line(line)
             self._lines.append(lineObj)
 
         self._updateLines()

@@ -217,7 +217,8 @@ class Base:
         if code == wx.WXK_NONE:
             code = event.GetKeyCode()
 
-        if (not 27 < code < 256):
+        #if (not 27 < code < 256):
+        if not code < 256:
             # So we don't consume the event
             event.Skip()
             return
