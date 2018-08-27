@@ -4,7 +4,7 @@ import time
 from threading import Lock
 from threading import Thread
 from bits.images import icon
-from bits.Terminal import TerminalCtrl
+from Terminal import Terminal
 
 EVT_SERIAL_DATA = wx.NewId()
 
@@ -146,7 +146,7 @@ class Base:
         self.frame = wx.Frame(None, title=AppTitle, size=size)
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        self.terminal = TerminalCtrl(self.frame)
+        self.terminal = Terminal(self.frame)
         self.terminal.SetSpacing(0)
         self.terminal.SetWrap(True)
 
