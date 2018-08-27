@@ -124,7 +124,7 @@ class Prompt:
 
 
 class _PromptFrame(wx.Frame):
-    _ver = '0.1-alpha'
+    _ver = '0.1'
 
     def __init__(self, *args, **kwargs):
         super(__class__, self).__init__(*args, **kwargs)
