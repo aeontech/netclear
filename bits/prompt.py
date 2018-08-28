@@ -1,4 +1,3 @@
-import os
 import wx
 import sys
 
@@ -196,7 +195,7 @@ class _TreeWidget(wx.TreeCtrl):
         lvl1 = {}
 
         for i in data:
-            make, model = i.split(os.sep)
+            make, model = i.split('/')
 
             if make not in lvl1:
                 lvl1[make] = self.AppendItem(root, make)
