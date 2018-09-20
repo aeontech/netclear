@@ -9,6 +9,7 @@ import devices.cisco.sw35xx
 import devices.cisco.sw37xx
 import devices.cisco.sw45xx
 import devices.cisco.sw49xx
+import devices.cisco.sw65xx
 import devices.dell.Force10
 
 def get(name):
@@ -20,6 +21,7 @@ def get(name):
         'cisco.sw37xx': devices.cisco.sw37xx.sw37xx,
         'cisco.sw45xx': devices.cisco.sw45xx.sw45xx,
         'cisco.sw49xx': devices.cisco.sw49xx.sw49xx,
+        'cisco.sw65xx': devices.cisco.sw65xx.sw65xx,
         'dell.Force10': devices.dell.Force10.Force10,
     }
 
