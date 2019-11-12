@@ -12,6 +12,20 @@ class sw35xx(Base):
                     " release the MODE button.")
 
         self.wait('switch: ')
+        self.send('set')
+        while 1:
+            out = self.ewait('|'.join(list(map(re.escape, [
+                'switch: ',
+                '-- MORE --'
+            ]))))
+
+            if out.rfind('-- MORE --') == -1:
+                break
+
+            if out.rfind('SWITCH_NUMBER=') <> -1:
+                self.send('unset SWITCH_NUMBER')
+                break
+
         self.send('flash_init')
         while 1:
             out = self.ewait('|'.join(list(map(re.escape, [
